@@ -5,6 +5,7 @@ import { classifyTrade } from '../lib/detector';
 import { useStore } from '../lib/config';
 import { INTERVAL_SECS } from '../lib/constants';
 import { appendAutoCachedTrade } from '../lib/autoCache';
+import { evaluateAlerts } from '../lib/alerts';
 import * as Kraken from '../lib/exchanges/kraken';
 import * as Bybit from '../lib/exchanges/bybit';
 import * as Okx from '../lib/exchanges/okx';
@@ -73,8 +74,8 @@ export function useMultiExchangeTrades(
         exchange: trade.exchange,
       };
 
-      // Save ALL detected trades before display filter so loosening filter restores them
       appendAutoCachedTrade(symbol, logEntry).catch(console.error);
+      evaluateAlerts(logEntry);
 
       if (minUsdFilter > 0 && result.usdValue < minUsdFilter) return;
 

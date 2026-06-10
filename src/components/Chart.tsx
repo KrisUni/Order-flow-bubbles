@@ -12,6 +12,7 @@ import type {
   UTCTimestamp,
   LineData,
 } from 'lightweight-charts';
+export type { IChartApi };
 import type { Candle, Bubble, VolEntry } from '../lib/types';
 import { useStore } from '../lib/config';
 import { INTERVAL_SECS } from '../lib/constants';
@@ -23,6 +24,7 @@ export interface ChartHandle {
   clearChart: () => void;
   scrollToTime: (time: number) => void;
   addVWAPPoint: (time: UTCTimestamp, value: number) => void;
+  getChart: () => IChartApi | null;
 }
 
 const BUBBLE_ALPHA = 0.75;
@@ -158,6 +160,31 @@ const Chart = forwardRef<ChartHandle, ChartProps>(function Chart({ binanceVolRef
       if (bins[i] > bins[pocIndex]) pocIndex = i;
     }
 
+    // ── 70% Value Area expansion ──
+    const totalVol = bins.reduce((s, b) => s + b, 0);
+    const targetVol = totalVol * 0.70;
+    let areaVol = bins[pocIndex];
+    let vahIdx = pocIndex;
+    let valIdx = pocIndex;
+
+    while (areaVol < targetVol) {
+      const canUp = vahIdx < NUM_LEVELS - 1;
+      const canDown = valIdx > 0;
+      if (!canUp && !canDown) break;
+      const upVol = canUp ? bins[vahIdx + 1] : -1;
+      const downVol = canDown ? bins[valIdx - 1] : -1;
+      if (upVol >= downVol) {
+        vahIdx++;
+        areaVol += bins[vahIdx];
+      } else {
+        valIdx--;
+        areaVol += bins[valIdx];
+      }
+    }
+
+    const vahPrice = priceMin + ((vahIdx + 1) / NUM_LEVELS) * (priceMax - priceMin);
+    const valPrice = priceMin + (valIdx / NUM_LEVELS) * (priceMax - priceMin);
+
     const maxBarWidth = Math.min(canvasEl.width * 0.14, 110);
 
     for (let i = 0; i < NUM_LEVELS; i++) {
@@ -174,12 +201,11 @@ const Chart = forwardRef<ChartHandle, ChartProps>(function Chart({ binanceVolRef
       const yDraw = Math.min(yTop, yBot);
 
       const isPOC = i === pocIndex;
-      const intensity = bins[i] / maxBin; // 0–1
-      // Higher base opacity for better visibility; POC at full intensity
-      const baseAlpha = 0.30 + intensity * 0.55;
+      const isInValueArea = i >= valIdx && i <= vahIdx;
+      const intensity = bins[i] / maxBin;
+      const baseAlpha = isInValueArea ? 0.40 + intensity * 0.55 : 0.30 + intensity * 0.55;
       const fillColor = heatColor(intensity, baseAlpha);
 
-      // Horizontal gradient: solid at left edge, fades to transparent at bar tip
       const grad = ctx.createLinearGradient(0, 0, barW, 0);
       grad.addColorStop(0, fillColor);
       grad.addColorStop(0.7, fillColor);
@@ -190,7 +216,6 @@ const Chart = forwardRef<ChartHandle, ChartProps>(function Chart({ binanceVolRef
       if (isPOC) {
         const pocY = (yTop + yBot) / 2;
         ctx.save();
-        // Bright white dashed line for POC — max contrast against any heat color
         ctx.strokeStyle = 'rgba(255,255,255,0.80)';
         ctx.lineWidth = 1;
         ctx.setLineDash([3, 5]);
@@ -202,6 +227,38 @@ const Chart = forwardRef<ChartHandle, ChartProps>(function Chart({ binanceVolRef
         ctx.restore();
       }
     }
+
+    // ── VAH / VAL dashed lines + labels ──
+    const vahY = candleSeries.priceToCoordinate(vahPrice);
+    const valY = candleSeries.priceToCoordinate(valPrice);
+
+    ctx.save();
+    ctx.strokeStyle = 'rgba(255,255,255,0.25)';
+    ctx.lineWidth = 1;
+    ctx.setLineDash([4, 4]);
+    ctx.font = '10px sans-serif';
+    ctx.textBaseline = 'bottom';
+    ctx.textAlign = 'left';
+    ctx.fillStyle = '#6b7280';
+
+    if (vahY !== null) {
+      ctx.beginPath();
+      ctx.moveTo(0, vahY);
+      ctx.lineTo(canvasEl.width, vahY);
+      ctx.stroke();
+      ctx.fillText('VAH', maxBarWidth + 3, vahY - 1);
+    }
+    if (valY !== null) {
+      ctx.beginPath();
+      ctx.moveTo(0, valY);
+      ctx.lineTo(canvasEl.width, valY);
+      ctx.stroke();
+      ctx.textBaseline = 'top';
+      ctx.fillText('VAL', maxBarWidth + 3, valY + 1);
+    }
+
+    ctx.setLineDash([]);
+    ctx.restore();
   }, []);
 
   // Draw bubbles on canvas overlay
@@ -559,6 +616,7 @@ const Chart = forwardRef<ChartHandle, ChartProps>(function Chart({ binanceVolRef
           // ignore out-of-order updates
         }
       },
+      getChart() { return chartRef.current; },
     }),
     [],
   );

@@ -43,6 +43,16 @@ export interface Bubble {
 
 export type ConnectionStatus = 'connected' | 'disconnected' | 'connecting' | 'error';
 
+export interface AlertRule {
+  id: string;
+  enabled: boolean;
+  minUsd: number;
+  pattern?: PatternName;
+  side?: 'buy' | 'sell';
+  notify: boolean;
+  sound: boolean;
+}
+
 export interface ExchangeConnection {
   close: () => void;
 }

@@ -45,8 +45,97 @@ body {
 
 .chart-wrap {
   flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.main-chart-area {
+  flex: 1;
   position: relative;
   overflow: hidden;
+}
+
+/* ── CVD panel ── */
+.cvd-panel-wrap {
+  height: 120px;
+  flex-shrink: 0;
+  border-top: 1px solid var(--border);
+}
+
+/* ── Stats strip ── */
+.stats-strip {
+  display: flex;
+  align-items: center;
+  flex-wrap: nowrap;
+  gap: 0;
+  padding: 3px 12px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg2);
+  font-size: 11px;
+  flex-shrink: 0;
+  overflow: hidden;
+}
+
+.stats-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+}
+
+.stats-label {
+  color: var(--text-dim);
+}
+
+.stats-sep {
+  padding: 0 6px;
+  color: var(--text-dim);
+}
+
+.stats-biggest-btn {
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  font-size: 11px;
+  font-family: inherit;
+}
+
+.stats-biggest-btn:hover {
+  text-decoration: underline;
+}
+
+/* ── Alert rules ── */
+.alert-rule-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 0;
+  border-bottom: 1px solid var(--bg3);
+  flex-wrap: wrap;
+}
+
+.alert-num-input {
+  width: 72px;
+  background: var(--bg3);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  padding: 2px 4px;
+  font-size: 11px;
+  font-family: inherit;
+}
+
+.alert-select {
+  background: var(--bg3);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  padding: 2px 4px;
+  font-size: 10px;
+  font-family: inherit;
+  cursor: pointer;
 }
 
 /* ── Header ── */

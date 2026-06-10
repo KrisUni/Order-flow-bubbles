@@ -7,6 +7,7 @@ import { classifyTrade } from '../lib/detector';
 import { useStore } from '../lib/config';
 import { INTERVAL_SECS } from '../lib/constants';
 import { getAutoCachedTrades, appendAutoCachedTrade } from '../lib/autoCache';
+import { evaluateAlerts } from '../lib/alerts';
 import {
   loadPriceHistory,
   savePriceHistory,
@@ -360,10 +361,8 @@ export function useBinanceStream(
         exchange: 'binance',
       };
 
-      // Save ALL detector-filtered trades to DB before applying display filters.
-      // DB = full history; bubbles/log = filtered display view only.
-      // This ensures loosening the filter later restores trades that were previously hidden.
       appendAutoCachedTrade(symbol, logEntry).catch(console.error);
+      evaluateAlerts(logEntry);
 
       // Display filter — only gates what's shown, not what's stored
       const { minUsdFilter } = useStore.getState();

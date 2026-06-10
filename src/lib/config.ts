@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import type { Bubble, BigTrade, ConnectionStatus } from './types';
+import type { Bubble, BigTrade, ConnectionStatus, AlertRule } from './types';
 import { MAX_BUBBLES, MAX_TRADES_LOG, DEFAULT_SYMBOL, DEFAULT_INTERVAL } from './constants';
 
 // ── Persisted config ──────────────────────────────────────────────
@@ -14,6 +14,8 @@ export interface AppConfig {
   showContractQty: boolean;   // render qty label on bubble
   showVolumeProfile: boolean; // render volume profile overlay on chart
   showDeltaBubbles: boolean;  // replace trade bubbles with per-candle delta bubbles
+  showCvd: boolean;           // show CVD sub-panel below chart
+  alertRules: AlertRule[];
 }
 
 const CONFIG_DEFAULTS: AppConfig = {
@@ -26,6 +28,8 @@ const CONFIG_DEFAULTS: AppConfig = {
   showContractQty: false,
   showVolumeProfile: true,
   showDeltaBubbles: false,
+  showCvd: true,
+  alertRules: [],
 };
 
 // ── Runtime state (not persisted) ────────────────────────────────
@@ -77,6 +81,11 @@ interface AppActions {
   setShowContractQty: (v: boolean) => void;
   setShowVolumeProfile: (v: boolean) => void;
   setShowDeltaBubbles: (v: boolean) => void;
+  setShowCvd: (v: boolean) => void;
+  // alerts
+  addAlertRule: (rule: AlertRule) => void;
+  updateAlertRule: (id: string, patch: Partial<AlertRule>) => void;
+  removeAlertRule: (id: string) => void;
   // exchange status
   setExchangeStatus: (exchange: string, status: ConnectionStatus) => void;
   // live tick
@@ -168,6 +177,16 @@ export const useStore = create<AppState>()(
       setShowContractQty: (showContractQty) => set({ showContractQty }),
       setShowVolumeProfile: (showVolumeProfile) => set({ showVolumeProfile }),
       setShowDeltaBubbles: (showDeltaBubbles) => set({ showDeltaBubbles }),
+      setShowCvd: (showCvd) => set({ showCvd }),
+
+      // ── Alert rules ──
+      addAlertRule: (rule) => set((s) => ({ alertRules: [...s.alertRules, rule] })),
+      updateAlertRule: (id, patch) =>
+        set((s) => ({
+          alertRules: s.alertRules.map((r) => (r.id === id ? { ...r, ...patch } : r)),
+        })),
+      removeAlertRule: (id) =>
+        set((s) => ({ alertRules: s.alertRules.filter((r) => r.id !== id) })),
 
       // ── Exchange status ──
       setExchangeStatus: (exchange, status) =>
@@ -189,6 +208,8 @@ export const useStore = create<AppState>()(
         showContractQty: s.showContractQty,
         showVolumeProfile: s.showVolumeProfile,
         showDeltaBubbles: s.showDeltaBubbles,
+        showCvd: s.showCvd,
+        alertRules: s.alertRules,
       }),
     },
   ),
