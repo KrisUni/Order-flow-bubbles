@@ -58,12 +58,15 @@ export function useBinanceStream(
 
   const wsRef = useRef<WebSocket[]>([]);
   const candlesRef = useRef<Map<number, Candle>>(new Map());
-  // Last CLOSED candle — used for pattern classification so OHLC is final
   const closedCandleRef = useRef<Candle | null>(null);
+  const prevSymbolRef = useRef<string>(symbol);
 
   useEffect(() => {
+    const symbolChanged = symbol !== prevSymbolRef.current;
+    prevSymbolRef.current = symbol;
+
     clearBubbles();
-    clearTradesLog();
+    if (symbolChanged) clearTradesLog();
     detectorRef.current?.reset();
     candlesRef.current = new Map();
     currentCandleRef.current = null;
@@ -82,7 +85,11 @@ export function useBinanceStream(
       await loadHistory();
       if (cancelled) return;
 
-      if (autoLoadTrades) await loadAutoCached();
+      if (autoLoadTrades) {
+        await loadAutoCached();
+      } else if (!symbolChanged) {
+        rebuildBubblesFromLog();
+      }
       if (cancelled) return;
 
       openStream();
@@ -210,6 +217,35 @@ export function useBinanceStream(
       } catch (e) {
         console.error('loadAutoCached error', e);
       }
+    }
+
+    function rebuildBubblesFromLog() {
+      const { tradesLog: log, showPatterns: sp } = useStore.getState();
+      if (log.length === 0) return;
+      const intervalSecs = INTERVAL_SECS[interval] ?? 60;
+      const rebuilt: Bubble[] = log.map((trade) => {
+        const candleTime = Math.floor(trade.time / intervalSecs) * intervalSecs;
+        const candle = candlesRef.current.get(candleTime);
+        const classification = (candle && sp)
+          ? classifyTrade(
+              { trade: { price: trade.price, qty: trade.qty, isMaker: trade.isMaker, timestamp: trade.time * 1000 }, usdValue: trade.usdValue, zscore: 0 },
+              candle,
+            )
+          : { pattern: undefined, patternSignal: undefined };
+        return {
+          id: trade.id,
+          time: candleTime,
+          price: trade.price,
+          qty: trade.qty,
+          usdValue: trade.usdValue,
+          isMaker: trade.isMaker,
+          pattern: classification.pattern,
+          patternSignal: classification.patternSignal,
+          exchange: trade.exchange,
+          birthMs: 0,
+        };
+      });
+      setBubbles(rebuilt);
     }
 
     function openStream() {

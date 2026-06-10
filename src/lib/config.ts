@@ -160,7 +160,7 @@ export const useStore = create<AppState>()(
 
       // ── Config actions ──
       setSymbol: (symbol) => set({ symbol, bubbles: [], tradesLog: [], selectedBubbleId: null }),
-      setInterval: (interval) => set({ interval, bubbles: [], tradesLog: [], selectedBubbleId: null }),
+      setInterval: (interval) => set({ interval, bubbles: [], selectedBubbleId: null }),
       setShowPatterns: (showPatterns) => set({ showPatterns }),
       setAutoLoadTrades: (autoLoadTrades) => set({ autoLoadTrades }),
       setDetectionThreshold: (detectionThreshold) => set({ detectionThreshold }),

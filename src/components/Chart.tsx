@@ -85,8 +85,10 @@ const Chart = forwardRef<ChartHandle, ChartProps>(function Chart({ binanceVolRef
   const candleSeriesRef = useRef<ISeriesApi<'Candlestick'> | null>(null);
   const vwapSeriesRef = useRef<ISeriesApi<'Line'> | null>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const animFrameRef = useRef<number | null>(null);
   const candlesForProfileRef = useRef<Candle[]>([]);
+  const dirtyRef = useRef(true);
+  const selectedIdRef = useRef(selectedId);
+  const showDeltaBubblesRef = useRef(showDeltaBubbles);
 
   const bubbles = useStore((s) => s.bubbles);
   const selectedId = useStore((s) => s.selectedBubbleId);
@@ -305,8 +307,15 @@ const Chart = forwardRef<ChartHandle, ChartProps>(function Chart({ binanceVolRef
     } else {
       // ── Regular trade bubble mode ──
       const now = Date.now();
+      const visibleRange = ts.getVisibleRange();
+      const intervalSecs = INTERVAL_SECS[useStore.getState().interval] ?? 60;
 
       for (const b of bubbles) {
+        if (visibleRange) {
+          const from = visibleRange.from as number;
+          const to = visibleRange.to as number;
+          if (b.time < from - intervalSecs || b.time > to + intervalSecs) continue;
+        }
         const x = ts.timeToCoordinate(b.time as UTCTimestamp);
         const y = candleSeries.priceToCoordinate(b.price);
         if (x === null || y === null) continue;
@@ -375,36 +384,31 @@ const Chart = forwardRef<ChartHandle, ChartProps>(function Chart({ binanceVolRef
   drawBubblesRef.current = drawBubbles;
   const bubblesRef = useRef(bubbles);
   bubblesRef.current = bubbles;
+  selectedIdRef.current = selectedId;
+  showDeltaBubblesRef.current = showDeltaBubbles;
 
-  // Animation loop — auto-stops after PULSE_DURATION_MS, no perpetual 60fps drain
+  // Mark dirty whenever state that affects the canvas changes
   useEffect(() => {
-    const hasPulsing = bubbles.some(
-      (b) => Date.now() - b.birthMs < PULSE_DURATION_MS,
-    );
+    dirtyRef.current = true;
+  }, [bubbles, selectedId, showVolumeProfile, showContractQty, showDeltaBubbles]);
 
-    if (hasPulsing) {
-      const frame = () => {
+  // Persistent rAF loop — draws only when dirty or a bubble is still pulsing
+  useEffect(() => {
+    let afId: number;
+    function loop() {
+      const now = Date.now();
+      const bubs = bubblesRef.current;
+      const isAnimating = !showDeltaBubblesRef.current &&
+        bubs.some((b) => now - b.birthMs < PULSE_DURATION_MS);
+      if (dirtyRef.current || isAnimating) {
+        dirtyRef.current = false;
         drawBubblesRef.current();
-        animFrameRef.current = requestAnimationFrame(frame);
-      };
-      animFrameRef.current = requestAnimationFrame(frame);
-
-      const stopTimer = setTimeout(() => {
-        if (animFrameRef.current !== null) {
-          cancelAnimationFrame(animFrameRef.current);
-          animFrameRef.current = null;
-        }
-        drawBubblesRef.current(); // final static draw
-      }, PULSE_DURATION_MS);
-
-      return () => {
-        if (animFrameRef.current !== null) cancelAnimationFrame(animFrameRef.current);
-        clearTimeout(stopTimer);
-      };
-    } else {
-      drawBubbles();
+      }
+      afId = requestAnimationFrame(loop);
     }
-  }, [bubbles, selectedId, drawBubbles, showVolumeProfile, showContractQty, showDeltaBubbles]);
+    afId = requestAnimationFrame(loop);
+    return () => cancelAnimationFrame(afId);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Chart init
   useEffect(() => {
@@ -456,7 +460,7 @@ const Chart = forwardRef<ChartHandle, ChartProps>(function Chart({ binanceVolRef
         canvas.width = container.clientWidth;
         canvas.height = container.clientHeight;
       }
-      drawBubblesRef.current();
+      dirtyRef.current = true;
     });
     ro.observe(container);
 
@@ -466,8 +470,8 @@ const Chart = forwardRef<ChartHandle, ChartProps>(function Chart({ binanceVolRef
       canvasRef.current.height = container.clientHeight;
     }
 
-    // Redraw on scroll/zoom — use ref to avoid stale closure
-    chart.timeScale().subscribeVisibleTimeRangeChange(() => drawBubblesRef.current());
+    // Mark dirty on scroll/zoom so the rAF loop redraws
+    chart.timeScale().subscribeVisibleTimeRangeChange(() => { dirtyRef.current = true; });
 
     // Bubble hit-test via chart click — canvas is pointer-events:none so chart gets drag/wheel
     chart.subscribeClick((param) => {
@@ -513,8 +517,8 @@ const Chart = forwardRef<ChartHandle, ChartProps>(function Chart({ binanceVolRef
         const idx = arr.findIndex((x) => (x.time as number) === (c.time as number));
         if (idx >= 0) arr[idx] = c;
         else arr.push(c);
-        // Redraw canvas AFTER array update so delta bubbles / volume profile see the new candle
-        drawBubblesRef.current();
+        // Mark dirty so rAF loop redraws with updated candle data
+        dirtyRef.current = true;
       },
       updateCandle(c: Candle) {
         try { candleSeriesRef.current?.update(c as CandlestickData); }
