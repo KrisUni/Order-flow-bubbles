@@ -540,9 +540,10 @@ const Chart = forwardRef<ChartHandle, ChartProps>(function Chart({ binanceVolRef
         const ts = chart.timeScale();
         const halfWindow = 30;
         const intervalSecs = INTERVAL_SECS[useStore.getState().interval] ?? 60;
+        const binned = Math.floor(time / intervalSecs) * intervalSecs;
         ts.setVisibleRange({
-          from: (time - halfWindow * intervalSecs) as UTCTimestamp,
-          to: (time + halfWindow * intervalSecs) as UTCTimestamp,
+          from: (binned - halfWindow * intervalSecs) as UTCTimestamp,
+          to: (binned + halfWindow * intervalSecs) as UTCTimestamp,
         });
       },
       addVWAPPoint(time: UTCTimestamp, value: number) {

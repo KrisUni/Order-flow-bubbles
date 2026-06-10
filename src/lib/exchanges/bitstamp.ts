@@ -2,6 +2,7 @@ import type { ExchangeConnection, OnStatus } from '../types';
 import type { RawTrade } from '../detector';
 import { safeWS } from './safeWS';
 import { SYMBOL_MAP } from './symbolMap';
+import { toMs } from './normalizeTime';
 
 export interface BookTicker {
   bidPrice: number;
@@ -81,16 +82,19 @@ export function connectTrades(
           amount?: number;
           type?: number;
           timestamp?: string;
+          microtimestamp?: string;
         };
       };
       if (d.event === 'trade' && d.data) {
-        const { price, amount, type, timestamp } = d.data;
+        const { price, amount, type, timestamp, microtimestamp } = d.data;
         if (price === undefined || amount === undefined) return;
         onTrade({
           price,
           qty: amount,
           isMaker: type === 1,
-          timestamp: timestamp ? parseInt(timestamp) * 1000 : Date.now(),
+          timestamp: microtimestamp
+            ? Math.round(parseFloat(microtimestamp) / 1000)
+            : toMs(timestamp ?? 0),
           exchange: 'bitstamp',
         });
       }

@@ -2,6 +2,7 @@ import type { ExchangeConnection, OnStatus } from '../types';
 import type { RawTrade } from '../detector';
 import { safeWS } from './safeWS';
 import { SYMBOL_MAP } from './symbolMap';
+import { toMs } from './normalizeTime';
 
 export interface BookTicker {
   bidPrice: number;
@@ -85,7 +86,7 @@ export function connectTrades(
             price: parseFloat(t.px),
             qty: parseFloat(t.sz),
             isMaker: t.side === 'sell',
-            timestamp: t.ts ? parseInt(t.ts) : Date.now(),
+            timestamp: t.ts ? toMs(t.ts) : Date.now(),
             exchange: 'okx',
           });
         }

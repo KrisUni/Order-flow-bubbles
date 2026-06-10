@@ -37,6 +37,7 @@ interface RuntimeState {
   settingsPanelOpen: boolean;
   sessionPanelOpen: boolean;
   exchangeStatuses: Record<string, ConnectionStatus>;
+  lastTickMs: number;
 }
 
 const RUNTIME_DEFAULTS: RuntimeState = {
@@ -47,6 +48,7 @@ const RUNTIME_DEFAULTS: RuntimeState = {
   settingsPanelOpen: false,
   sessionPanelOpen: false,
   exchangeStatuses: {},
+  lastTickMs: 0,
 };
 
 // ── Actions ──────────────────────────────────────────────────────
@@ -77,6 +79,8 @@ interface AppActions {
   setShowDeltaBubbles: (v: boolean) => void;
   // exchange status
   setExchangeStatus: (exchange: string, status: ConnectionStatus) => void;
+  // live tick
+  setLastTick: () => void;
 }
 
 type AppState = AppConfig & RuntimeState & AppActions;
@@ -170,6 +174,8 @@ export const useStore = create<AppState>()(
         set((s) => ({
           exchangeStatuses: { ...s.exchangeStatuses, [exchange]: status },
         })),
+
+      setLastTick: () => set({ lastTickMs: Date.now() }),
     }),
     {
       name: 'orderflow-config',

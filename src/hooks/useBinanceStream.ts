@@ -54,6 +54,7 @@ export function useBinanceStream(
   const clearBubbles = useStore((s) => s.clearBubbles);
   const clearTradesLog = useStore((s) => s.clearTradesLog);
   const setExchangeStatus = useStore((s) => s.setExchangeStatus);
+  const setLastTick = useStore((s) => s.setLastTick);
 
   const wsRef = useRef<WebSocket[]>([]);
   const candlesRef = useRef<Map<number, Candle>>(new Map());
@@ -248,6 +249,7 @@ export function useBinanceStream(
     }
 
     function handleKline(k: BinanceKline & { x?: boolean }) {
+      setLastTick();
       const open  = parseFloat(k.o);
       const high  = parseFloat(k.h);
       const low   = parseFloat(k.l);
