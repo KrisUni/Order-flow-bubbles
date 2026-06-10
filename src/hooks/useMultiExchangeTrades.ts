@@ -30,6 +30,7 @@ export function useMultiExchangeTrades(
     extraVolRef.current.clear();
 
     const intervalSecs = INTERVAL_SECS[interval] ?? 60;
+    let tradeSeq = 0;
 
     function handleTrade(trade: RawTrade & { exchange: string }) {
       const detector = detectorRef.current;
@@ -53,7 +54,7 @@ export function useMultiExchangeTrades(
       if (!candle) return;
 
       const tradeTime = Math.floor(trade.timestamp / 1000);
-      const id = `${trade.exchange}-${trade.timestamp}-${trade.price}-${trade.qty}`;
+      const id = `${trade.exchange}-${trade.timestamp}-${tradeSeq++}`;
 
       // Read fresh from store — avoid stale closures (effect runs on [symbol, interval] only)
       const { minUsdFilter, showPatterns } = useStore.getState();

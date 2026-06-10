@@ -108,10 +108,13 @@ export function useBinanceStream(
         const lastTime = keys.length > 0 ? keys.reduce((a, b) => Math.max(a, b), 0) : null;
         const intervalSecs = INTERVAL_SECS[interval] ?? 60;
         let url = `${BINANCE_REST}/klines?symbol=${symbol}&interval=${interval}&limit=${CANDLE_LIMIT}`;
+        let fullRefresh = false;
         if (lastTime) {
           const gapCandles = Math.floor((Date.now() / 1000 - lastTime) / intervalSecs);
           if (gapCandles < CANDLE_LIMIT) {
-            url += `&startTime=${(lastTime + intervalSecs) * 1000}`;
+            url += `&startTime=${lastTime * 1000}`;
+          } else {
+            fullRefresh = true;
           }
         }
 
@@ -139,6 +142,10 @@ export function useBinanceStream(
           .filter((c): c is Candle => c !== null);
 
         if (fresh.length > 0) {
+          if (fullRefresh) {
+            candlesRef.current.clear();
+            binanceVolRef.current.clear();
+          }
           for (const c of fresh) {
             candlesRef.current.set(c.time as number, c);
             if (c.takerBuyVolume !== undefined && c.volume !== undefined) {
