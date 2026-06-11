@@ -39,7 +39,6 @@ export function useBinanceStream(
   const setExchangeStatus = useStore((s) => s.setExchangeStatus);
   const setLastTick = useStore((s) => s.setLastTick);
 
-  const wsRef = useRef<WebSocket[]>([]);
   const closeKlineRef = useRef<(() => void) | null>(null);
   const candlesRef = useRef<Map<number, Candle>>(new Map());
   const prevSymbolRef = useRef<string>(symbol);
