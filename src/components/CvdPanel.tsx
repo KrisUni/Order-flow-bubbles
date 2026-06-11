@@ -9,12 +9,11 @@ export interface CvdHandle {
 }
 
 interface Props {
-  binanceVolRef: React.RefObject<Map<number, VolEntry>>;
-  extraVolRef: React.RefObject<Map<number, VolEntry>>;
+  volRef: React.RefObject<Map<number, VolEntry>>;
 }
 
 const CvdPanel = forwardRef<CvdHandle, Props>(function CvdPanel(
-  { binanceVolRef, extraVolRef },
+  { volRef },
   ref,
 ) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -86,20 +85,12 @@ const CvdPanel = forwardRef<CvdHandle, Props>(function CvdPanel(
       const series = seriesRef.current;
       if (!series) return;
 
-      const times = new Set([
-        ...binanceVolRef.current.keys(),
-        ...extraVolRef.current.keys(),
-      ]);
-      if (times.size === 0) return;
+      const entries = Array.from(volRef.current.entries()).sort((a, b) => a[0] - b[0]);
+      if (entries.length === 0) return;
 
-      const sorted = Array.from(times).sort((a, b) => a - b);
       let running = 0;
-      const data = sorted.map((t) => {
-        const b = binanceVolRef.current.get(t);
-        const e = extraVolRef.current.get(t);
-        const buyVol = (b?.buyVol ?? 0) + (e?.buyVol ?? 0);
-        const sellVol = (b?.sellVol ?? 0) + (e?.sellVol ?? 0);
-        running += buyVol - sellVol;
+      const data = entries.map(([t, vol]) => {
+        running += vol.buyVol - vol.sellVol;
         return { time: t as UTCTimestamp, value: running };
       });
 
@@ -107,7 +98,7 @@ const CvdPanel = forwardRef<CvdHandle, Props>(function CvdPanel(
     }, 1000);
 
     return () => clearInterval(id);
-  }, [binanceVolRef, extraVolRef]);
+  }, [volRef]);
 
   return (
     <div className="cvd-panel-wrap">

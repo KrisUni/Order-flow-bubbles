@@ -25,8 +25,7 @@ function App() {
   const cvdRef = useRef<CvdHandle | null>(null);
   const detectorRef = useRef<Detector | null>(new Detector());
   const currentCandleRef = useRef<Candle | null>(null);
-  const binanceVolRef = useRef<Map<number, VolEntry>>(new Map());
-  const extraVolRef = useRef<Map<number, VolEntry>>(new Map());
+  const compositeVolRef = useRef<Map<number, VolEntry>>(new Map());
 
   const anyPanelOpen = useStore(
     (s) => s.tradesPanelOpen || s.settingsPanelOpen || s.sessionPanelOpen,
@@ -38,7 +37,7 @@ function App() {
     detectorRef.current?.setThreshold(detectionThreshold);
   }, [detectionThreshold]);
 
-  useBinanceStream(chartRef, detectorRef, currentCandleRef, binanceVolRef);
+  useBinanceStream(chartRef, detectorRef, currentCandleRef, compositeVolRef);
 
   useMultiExchangePrice((point) => {
     const t = currentCandleRef.current?.time;
@@ -46,7 +45,7 @@ function App() {
     chartRef.current?.addVWAPPoint(t as UTCTimestamp, point.mid);
   });
 
-  useMultiExchangeTrades(detectorRef, currentCandleRef, extraVolRef);
+  useMultiExchangeTrades(detectorRef, currentCandleRef, compositeVolRef);
 
   // Wire bidirectional time-axis sync between main chart and CVD panel
   useEffect(() => {
@@ -91,13 +90,13 @@ function App() {
         <div className="chart-wrap">
           <div className="main-chart-area">
             <ErrorBoundary label="Chart">
-              <Chart ref={chartRef} binanceVolRef={binanceVolRef} extraVolRef={extraVolRef} />
+              <Chart ref={chartRef} volRef={compositeVolRef} />
             </ErrorBoundary>
             <Legend />
           </div>
 
           {showCvd && (
-            <CvdPanel ref={cvdRef} binanceVolRef={binanceVolRef} extraVolRef={extraVolRef} />
+            <CvdPanel ref={cvdRef} volRef={compositeVolRef} />
           )}
         </div>
 

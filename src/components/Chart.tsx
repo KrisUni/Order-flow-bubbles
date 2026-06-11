@@ -77,11 +77,10 @@ function signalColor(b: Bubble, alpha: number): string {
 }
 
 interface ChartProps {
-  binanceVolRef: React.RefObject<Map<number, VolEntry>>;
-  extraVolRef: React.RefObject<Map<number, VolEntry>>;
+  volRef: React.RefObject<Map<number, VolEntry>>;
 }
 
-const Chart = forwardRef<ChartHandle, ChartProps>(function Chart({ binanceVolRef, extraVolRef }, ref) {
+const Chart = forwardRef<ChartHandle, ChartProps>(function Chart({ volRef }, ref) {
   const containerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
   const candleSeriesRef = useRef<ISeriesApi<'Candlestick'> | null>(null);
@@ -101,10 +100,7 @@ const Chart = forwardRef<ChartHandle, ChartProps>(function Chart({ binanceVolRef
 
   // Merge Binance kline volume + other-exchange accumulated volume for a candle timestamp
   function getCrossVol(t: number): VolEntry | null {
-    const b = binanceVolRef.current.get(t);
-    const e = extraVolRef.current.get(t);
-    if (!b && !e) return null;
-    return { buyVol: (b?.buyVol ?? 0) + (e?.buyVol ?? 0), sellVol: (b?.sellVol ?? 0) + (e?.sellVol ?? 0) };
+    return volRef.current.get(t) ?? null;
   }
 
   // Draw volume profile from candle data as a left-edge overlay

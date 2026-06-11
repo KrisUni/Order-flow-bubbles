@@ -41,7 +41,7 @@ export function useBinanceStream(
   chartRef: React.RefObject<ChartHandle | null>,
   detectorRef: React.RefObject<Detector | null>,
   currentCandleRef: React.RefObject<Candle | null>,
-  binanceVolRef: React.RefObject<Map<number, VolEntry>>,
+  compositeVolRef: React.RefObject<Map<number, VolEntry>>,
 ): void {
   const symbol = useStore((s) => s.symbol);
   const interval = useStore((s) => s.interval);
@@ -72,7 +72,7 @@ export function useBinanceStream(
     detectorRef.current?.reset();
     candlesRef.current = new Map();
     currentCandleRef.current = null;
-    binanceVolRef.current.clear();
+    compositeVolRef.current.clear();
 
     let cancelled = false;
 
@@ -105,7 +105,7 @@ export function useBinanceStream(
         for (const c of stored) {
           candlesRef.current.set(c.time as number, c);
           if (c.takerBuyVolume !== undefined && c.volume !== undefined) {
-            binanceVolRef.current.set(c.time as number, { buyVol: c.takerBuyVolume, sellVol: c.volume - c.takerBuyVolume });
+            compositeVolRef.current.set(c.time as number, { buyVol: c.takerBuyVolume, sellVol: c.volume - c.takerBuyVolume });
           }
         }
         chartRef.current?.setCandles(stored);
@@ -154,12 +154,12 @@ export function useBinanceStream(
         if (fresh.length > 0) {
           if (fullRefresh) {
             candlesRef.current.clear();
-            binanceVolRef.current.clear();
+            compositeVolRef.current.clear();
           }
           for (const c of fresh) {
             candlesRef.current.set(c.time as number, c);
             if (c.takerBuyVolume !== undefined && c.volume !== undefined) {
-              binanceVolRef.current.set(c.time as number, { buyVol: c.takerBuyVolume, sellVol: c.volume - c.takerBuyVolume });
+              compositeVolRef.current.set(c.time as number, { buyVol: c.takerBuyVolume, sellVol: c.volume - c.takerBuyVolume });
             }
           }
           const all = Array.from(candlesRef.current.values()).sort(
@@ -308,9 +308,6 @@ export function useBinanceStream(
       };
       candlesRef.current.set(candle.time as number, candle);
       currentCandleRef.current = candle;
-      if (isFinite(tbv) && isFinite(vol)) {
-        binanceVolRef.current.set(candle.time as number, { buyVol: tbv, sellVol: vol - tbv });
-      }
 
       if (k.x) {
         closedCandleRef.current = candle; // lock in final OHLC for classification
@@ -335,11 +332,17 @@ export function useBinanceStream(
         timestamp: t.T,
       };
 
+      // Accumulate ALL Binance trades into composite vol (not just detected ones)
+      const intervalSecs = INTERVAL_SECS[interval] ?? 60;
+      const candleTime = Math.floor(rawTrade.timestamp / 1000 / intervalSecs) * intervalSecs;
+      const vol = compositeVolRef.current.get(candleTime) ?? { buyVol: 0, sellVol: 0 };
+      if (rawTrade.isMaker) vol.sellVol += rawTrade.qty;
+      else vol.buyVol += rawTrade.qty;
+      compositeVolRef.current.set(candleTime, vol);
+
       const result = detector.processTrade(rawTrade);
       if (!result) return;
 
-      const intervalSecs = INTERVAL_SECS[interval] ?? 60;
-      const candleTime = Math.floor(rawTrade.timestamp / 1000 / intervalSecs) * intervalSecs;
       const tradeTime = Math.floor(rawTrade.timestamp / 1000);
       const id = `binance-${t.a}-${t.T}`;
 

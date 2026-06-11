@@ -15,7 +15,7 @@ import type { RawTrade } from '../lib/detector';
 export function useMultiExchangeTrades(
   detectorRef: React.RefObject<Detector | null>,
   currentCandleRef: React.RefObject<Candle | null>,
-  extraVolRef: React.RefObject<Map<number, VolEntry>>,
+  compositeVolRef: React.RefObject<Map<number, VolEntry>>,
 ): void {
   const symbol = useStore((s) => s.symbol);
   const interval = useStore((s) => s.interval);
@@ -28,7 +28,6 @@ export function useMultiExchangeTrades(
   useEffect(() => {
     connectionsRef.current.forEach((c) => c.close());
     connectionsRef.current = [];
-    extraVolRef.current.clear();
 
     const intervalSecs = INTERVAL_SECS[interval] ?? 60;
     let tradeSeq = 0;
@@ -40,13 +39,11 @@ export function useMultiExchangeTrades(
       const candleTime =
         Math.floor(trade.timestamp / 1000 / intervalSecs) * intervalSecs;
 
-      // Accumulate ALL trades into extraVolRef (base asset units) — same completeness as
-      // binanceVolRef which comes from klines. Only accumulating detected trades would
-      // undercount volume relative to Binance's aggregate kline data.
-      const existing = extraVolRef.current.get(candleTime) ?? { buyVol: 0, sellVol: 0 };
+      // Accumulate ALL trades into compositeVolRef (base asset units, per candle bin)
+      const existing = compositeVolRef.current.get(candleTime) ?? { buyVol: 0, sellVol: 0 };
       if (trade.isMaker) existing.sellVol += trade.qty;
       else               existing.buyVol  += trade.qty;
-      extraVolRef.current.set(candleTime, existing);
+      compositeVolRef.current.set(candleTime, existing);
 
       const result = detector.processTrade(trade);
       if (!result) return;
