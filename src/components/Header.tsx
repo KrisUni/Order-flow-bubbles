@@ -12,7 +12,7 @@ const STATUS_COLOR: Record<string, string> = {
   error: '#ef4444',
 };
 
-const EXCHANGES = ['candles', 'binance', 'kraken', 'bybit', 'okx', 'bitstamp'] as const;
+const EXCHANGES = ['candles', 'binance', 'binance-perp', 'coinbase', 'kraken', 'bybit', 'bybit-perp', 'okx', 'okx-perp', 'bitstamp'] as const;
 
 export default function Header() {
   const symbol = useStore((s) => s.symbol);

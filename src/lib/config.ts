@@ -15,6 +15,8 @@ export interface AppConfig {
   showVolumeProfile: boolean; // render volume profile overlay on chart
   showDeltaBubbles: boolean;  // replace trade bubbles with per-candle delta bubbles
   showCvd: boolean;           // show CVD sub-panel below chart
+  panelWidth: number;         // side panel width in px, clamped [240, 560]
+  includePerps: boolean;      // connect binance-perp, bybit-perp, okx-perp feeds
   alertRules: AlertRule[];
 }
 
@@ -29,6 +31,8 @@ const CONFIG_DEFAULTS: AppConfig = {
   showVolumeProfile: true,
   showDeltaBubbles: false,
   showCvd: true,
+  panelWidth: 320,
+  includePerps: true,
   alertRules: [],
 };
 
@@ -82,6 +86,8 @@ interface AppActions {
   setShowVolumeProfile: (v: boolean) => void;
   setShowDeltaBubbles: (v: boolean) => void;
   setShowCvd: (v: boolean) => void;
+  setPanelWidth: (w: number) => void;
+  setIncludePerps: (v: boolean) => void;
   // alerts
   addAlertRule: (rule: AlertRule) => void;
   updateAlertRule: (id: string, patch: Partial<AlertRule>) => void;
@@ -178,6 +184,8 @@ export const useStore = create<AppState>()(
       setShowVolumeProfile: (showVolumeProfile) => set({ showVolumeProfile }),
       setShowDeltaBubbles: (showDeltaBubbles) => set({ showDeltaBubbles }),
       setShowCvd: (showCvd) => set({ showCvd }),
+      setPanelWidth: (w) => set({ panelWidth: Math.min(560, Math.max(240, w)) }),
+      setIncludePerps: (includePerps) => set({ includePerps }),
 
       // ── Alert rules ──
       addAlertRule: (rule) => set((s) => ({ alertRules: [...s.alertRules, rule] })),
@@ -198,6 +206,14 @@ export const useStore = create<AppState>()(
     }),
     {
       name: 'orderflow-config',
+      version: 1,
+      migrate(persistedState, fromVersion) {
+        const s = persistedState as Partial<AppConfig>;
+        if (fromVersion < 1) {
+          s.autoLoadTrades = true;
+        }
+        return s;
+      },
       partialize: (s) => ({
         symbol: s.symbol,
         interval: s.interval,
@@ -209,6 +225,8 @@ export const useStore = create<AppState>()(
         showVolumeProfile: s.showVolumeProfile,
         showDeltaBubbles: s.showDeltaBubbles,
         showCvd: s.showCvd,
+        panelWidth: s.panelWidth,
+        includePerps: s.includePerps,
         alertRules: s.alertRules,
       }),
     },

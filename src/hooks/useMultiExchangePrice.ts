@@ -6,11 +6,11 @@ import * as Bybit from '../lib/exchanges/bybit';
 import * as Okx from '../lib/exchanges/okx';
 import * as Bitstamp from '../lib/exchanges/bitstamp';
 import * as Binance from '../lib/exchanges/binance';
+import * as Coinbase from '../lib/exchanges/coinbase';
 
 type PriceSample = { bid: number; ask: number };
 
-const EXCHANGES = ['binance', 'kraken', 'bybit', 'okx', 'bitstamp'] as const;
-type ExchangeName = (typeof EXCHANGES)[number];
+type ExchangeName = 'binance' | 'coinbase' | 'kraken' | 'bybit' | 'okx' | 'bitstamp';
 
 export interface VWAPPoint {
   mid: number; // composite mid price
@@ -50,6 +50,7 @@ export function useMultiExchangePrice(
 
     connectionsRef.current = [
       Binance.connect(symbol, onTicker('binance'), status('binance')),
+      Coinbase.connect(symbol, onTicker('coinbase'), status('coinbase')),
       Kraken.connect(symbol, onTicker('kraken'), status('kraken')),
       Bybit.connect(symbol, onTicker('bybit'), status('bybit')),
       Okx.connect(symbol, onTicker('okx'), status('okx')),

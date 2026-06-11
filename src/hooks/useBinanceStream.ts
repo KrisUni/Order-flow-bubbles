@@ -214,8 +214,6 @@ export function useBinanceStream(
     }
 
     function openStream() {
-      const sym = symbol.toLowerCase();
-
       closeKlineRef.current = provider.openKlineStream(
         symbol,
         interval,

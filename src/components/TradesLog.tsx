@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import type { ChartHandle } from './Chart';
 import { useStore } from '../lib/config';
+import PanelShell from './PanelShell';
 
 interface Props {
   chartRef: React.RefObject<ChartHandle | null>;
@@ -56,7 +57,7 @@ export default function TradesLog({ chartRef }: Props) {
   }
 
   return (
-    <div className="side-panel trades-panel">
+    <PanelShell className="trades-panel">
       <div className="panel-header">
         <span>Trades Log ({tradesLog.length})</span>
         <div style={{ display: 'flex', gap: 4 }}>
@@ -107,6 +108,6 @@ export default function TradesLog({ chartRef }: Props) {
           </div>
         ))}
       </div>
-    </div>
+    </PanelShell>
   );
 }

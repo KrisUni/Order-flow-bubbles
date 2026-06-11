@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useStore } from '../lib/config';
+import PanelShell from './PanelShell';
 import { clearAllData } from '../lib/db';
 import type { AlertRule, PatternName } from '../lib/types';
 
@@ -28,6 +29,8 @@ export default function SettingsPanel() {
   const setShowVolumeProfile = useStore((s) => s.setShowVolumeProfile);
   const showCvd = useStore((s) => s.showCvd);
   const setShowCvd = useStore((s) => s.setShowCvd);
+  const includePerps = useStore((s) => s.includePerps);
+  const setIncludePerps = useStore((s) => s.setIncludePerps);
   const alertRules = useStore((s) => s.alertRules);
   const addAlertRule = useStore((s) => s.addAlertRule);
   const updateAlertRule = useStore((s) => s.updateAlertRule);
@@ -77,7 +80,7 @@ export default function SettingsPanel() {
   const usdActive = minUsdFilter > 0;
 
   return (
-    <div className="side-panel">
+    <PanelShell>
       <div className="panel-header">
         <span>Settings</span>
         <button className="panel-close" onClick={() => closePanel('settings')}>
@@ -199,6 +202,16 @@ export default function SettingsPanel() {
           <span>Show CVD panel</span>
         </label>
 
+        {/* ── Perp feeds ── */}
+        <label className="setting-row">
+          <input
+            type="checkbox"
+            checked={includePerps}
+            onChange={(e) => setIncludePerps(e.target.checked)}
+          />
+          <span>Include perpetual futures feeds</span>
+        </label>
+
         {/* ── Auto-load ── */}
         <label className="setting-row">
           <input
@@ -206,7 +219,7 @@ export default function SettingsPanel() {
             checked={autoLoadTrades}
             onChange={(e) => setAutoLoadTrades(e.target.checked)}
           />
-          <span>Auto-load previous trades on startup</span>
+          <span>Load previous session on startup</span>
         </label>
 
         {/* ── Alerts ── */}
@@ -331,6 +344,6 @@ export default function SettingsPanel() {
           </div>
         </div>
       </div>
-    </div>
+    </PanelShell>
   );
 }

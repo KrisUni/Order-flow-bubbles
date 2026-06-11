@@ -11,6 +11,10 @@ import * as Bybit from '../lib/exchanges/bybit';
 import * as Okx from '../lib/exchanges/okx';
 import * as Bitstamp from '../lib/exchanges/bitstamp';
 import * as Binance from '../lib/exchanges/binance';
+import * as Coinbase from '../lib/exchanges/coinbase';
+import * as BinancePerp from '../lib/exchanges/binancePerp';
+import * as BybitPerp from '../lib/exchanges/bybitPerp';
+import * as OkxPerp from '../lib/exchanges/okxPerp';
 import type { RawTrade } from '../lib/detector';
 
 export function useMultiExchangeTrades(
@@ -21,6 +25,7 @@ export function useMultiExchangeTrades(
 ): void {
   const symbol = useStore((s) => s.symbol);
   const interval = useStore((s) => s.interval);
+  const includePerps = useStore((s) => s.includePerps);
   const addBubble = useStore((s) => s.addBubble);
   const addToTradesLog = useStore((s) => s.addToTradesLog);
   const setExchangeStatus = useStore((s) => s.setExchangeStatus);
@@ -108,11 +113,17 @@ export function useMultiExchangeTrades(
       Okx.connectTrades(symbol, handleTrade, onStatus('okx')),
       Bitstamp.connectTrades(symbol, handleTrade, onStatus('bitstamp')),
       Binance.connectTrades(symbol, handleTrade, onStatus('binance')),
+      Coinbase.connectTrades(symbol, handleTrade, onStatus('coinbase')),
+      ...(includePerps ? [
+        BinancePerp.connectTrades(symbol, handleTrade, onStatus('binance-perp')),
+        BybitPerp.connectTrades(symbol, handleTrade, onStatus('bybit-perp')),
+        OkxPerp.connectTrades(symbol, handleTrade, onStatus('okx-perp')),
+      ] : []),
     ];
 
     return () => {
       connectionsRef.current.forEach((c) => c.close());
       connectionsRef.current = [];
     };
-  }, [symbol, interval]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [symbol, interval, includePerps]); // eslint-disable-line react-hooks/exhaustive-deps
 }

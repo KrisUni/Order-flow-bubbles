@@ -1,6 +1,7 @@
 import { useRef } from 'react';
 import type { BigTrade, Bubble } from '../lib/types';
 import { useStore } from '../lib/config';
+import PanelShell from './PanelShell';
 
 export default function SessionManager() {
   const sessionPanelOpen = useStore((s) => s.sessionPanelOpen);
@@ -68,7 +69,7 @@ export default function SessionManager() {
   }
 
   return (
-    <div className="side-panel">
+    <PanelShell>
       <div className="panel-header">
         <span>Session</span>
         <button className="panel-close" onClick={() => closePanel('session')}>
@@ -94,6 +95,6 @@ export default function SessionManager() {
           onChange={handleFileChange}
         />
       </div>
-    </div>
+    </PanelShell>
   );
 }

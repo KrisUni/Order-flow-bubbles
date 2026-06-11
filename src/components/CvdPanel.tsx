@@ -43,8 +43,8 @@ const CvdPanel = forwardRef<CvdHandle, Props>(function CvdPanel(
       rightPriceScale: { borderColor: '#374151' },
       timeScale: { borderColor: '#374151', visible: false },
       crosshair: { mode: 0 },
-      handleScroll: { mouseWheel: true, pressedMouseMove: true, horzTouchDrag: true },
-      handleScale: { mouseWheel: true, pinch: true, axisPressedMouseMove: true },
+      handleScroll: false,
+      handleScale: false,
       width: container.clientWidth,
       height: container.clientHeight,
     });
@@ -79,11 +79,13 @@ const CvdPanel = forwardRef<CvdHandle, Props>(function CvdPanel(
     seriesRef.current?.setData([]);
   }, [symbol, interval]);
 
-  // Recompute CVD every second
+  // Recompute CVD every second; preserve the current view so setData doesn't
+  // fire a range-change event that would snap the main chart back to the live edge.
   useEffect(() => {
     const id = setInterval(() => {
       const series = seriesRef.current;
-      if (!series) return;
+      const chart = chartRef.current;
+      if (!series || !chart) return;
 
       const entries = Array.from(volRef.current.entries()).sort((a, b) => a[0] - b[0]);
       if (entries.length === 0) return;
@@ -94,7 +96,9 @@ const CvdPanel = forwardRef<CvdHandle, Props>(function CvdPanel(
         return { time: t as UTCTimestamp, value: running };
       });
 
+      const range = chart.timeScale().getVisibleLogicalRange();
       series.setData(data);
+      if (range) chart.timeScale().setVisibleLogicalRange(range);
     }, 1000);
 
     return () => clearInterval(id);

@@ -1,6 +1,6 @@
 import type { UTCTimestamp } from 'lightweight-charts';
 import type { Candle } from '../types';
-import type { CandleProvider, KlineUpdate } from './types';
+import type { CandleProvider } from './types';
 import { safeWS } from '../exchanges/safeWS';
 import { SYMBOL_MAP } from '../exchanges/symbolMap';
 

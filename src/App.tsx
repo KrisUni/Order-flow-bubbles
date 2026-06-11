@@ -31,6 +31,7 @@ function App() {
   const anyPanelOpen = useStore(
     (s) => s.tradesPanelOpen || s.settingsPanelOpen || s.sessionPanelOpen,
   );
+  const panelWidth = useStore((s) => s.panelWidth);
   const showCvd = useStore((s) => s.showCvd);
 
   const detectionThreshold = useStore((s) => s.detectionThreshold);
@@ -48,34 +49,24 @@ function App() {
 
   useMultiExchangeTrades(detectorRef, currentCandleRef, closedCandleRef, compositeVolRef);
 
-  // Wire bidirectional time-axis sync between main chart and CVD panel
+  // One-directional time-axis sync: main chart drives CVD panel.
+  // CVD→main direction was removed — setData on CVD fires its range-change
+  // subscription and would snap the main chart back to the live edge during zoom.
   useEffect(() => {
     if (!showCvd) return;
     const main = chartRef.current?.getChart();
     const cvd = cvdRef.current?.getChart();
     if (!main || !cvd) return;
 
-    let isSyncing = false;
-
     const mainHandler = (r: LogicalRange | null) => {
-      if (isSyncing || !r) return;
-      isSyncing = true;
+      if (!r) return;
       cvd.timeScale().setVisibleLogicalRange(r);
-      isSyncing = false;
-    };
-    const cvdHandler = (r: LogicalRange | null) => {
-      if (isSyncing || !r) return;
-      isSyncing = true;
-      main.timeScale().setVisibleLogicalRange(r);
-      isSyncing = false;
     };
 
     main.timeScale().subscribeVisibleLogicalRangeChange(mainHandler);
-    cvd.timeScale().subscribeVisibleLogicalRangeChange(cvdHandler);
 
     return () => {
       main.timeScale().unsubscribeVisibleLogicalRangeChange(mainHandler);
-      cvd.timeScale().unsubscribeVisibleLogicalRangeChange(cvdHandler);
     };
   }, [showCvd]);
 
@@ -101,7 +92,7 @@ function App() {
           )}
         </div>
 
-        <div className={`panels${anyPanelOpen ? ' panels-open' : ''}`}>
+        <div className={`panels${anyPanelOpen ? ' panels-open' : ''}`} style={{ '--panel-w': `${panelWidth}px` } as React.CSSProperties}>
           <ErrorBoundary label="TradesLog">
             <TradesLog chartRef={chartRef} />
           </ErrorBoundary>
