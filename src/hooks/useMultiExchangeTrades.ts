@@ -10,11 +10,13 @@ import * as Kraken from '../lib/exchanges/kraken';
 import * as Bybit from '../lib/exchanges/bybit';
 import * as Okx from '../lib/exchanges/okx';
 import * as Bitstamp from '../lib/exchanges/bitstamp';
+import * as Binance from '../lib/exchanges/binance';
 import type { RawTrade } from '../lib/detector';
 
 export function useMultiExchangeTrades(
   detectorRef: React.RefObject<Detector | null>,
   currentCandleRef: React.RefObject<Candle | null>,
+  closedCandleRef: React.RefObject<Candle | null>,
   compositeVolRef: React.RefObject<Map<number, VolEntry>>,
 ): void {
   const symbol = useStore((s) => s.symbol);
@@ -32,7 +34,7 @@ export function useMultiExchangeTrades(
     const intervalSecs = INTERVAL_SECS[interval] ?? 60;
     let tradeSeq = 0;
 
-    function handleTrade(trade: RawTrade & { exchange: string }) {
+    function handleTrade(trade: RawTrade & { exchange: string; nativeId?: string }) {
       const detector = detectorRef.current;
       if (!detector) return;
 
@@ -48,16 +50,18 @@ export function useMultiExchangeTrades(
       const result = detector.processTrade(trade);
       if (!result) return;
 
-      const candle = currentCandleRef.current;
-      if (!candle) return;
+      if (!currentCandleRef.current) return;
 
       const tradeTime = Math.floor(trade.timestamp / 1000);
-      const id = `${trade.exchange}-${trade.timestamp}-${tradeSeq++}`;
+      const id = trade.nativeId ?? `${trade.exchange}-${trade.timestamp}-${tradeSeq++}`;
 
-      // Read fresh from store — avoid stale closures (effect runs on [symbol, interval] only)
       const { minUsdFilter, showPatterns } = useStore.getState();
 
-      const classification = showPatterns ? classifyTrade(result, candle) : {};
+      // Classify against closed candle (final OHLC); fall back to live candle
+      const classifyCandle = closedCandleRef.current ?? currentCandleRef.current;
+      const classification = (classifyCandle && showPatterns)
+        ? classifyTrade(result, classifyCandle)
+        : {};
 
       const logEntry = {
         id,
@@ -103,6 +107,7 @@ export function useMultiExchangeTrades(
       Bybit.connectTrades(symbol, handleTrade, onStatus('bybit')),
       Okx.connectTrades(symbol, handleTrade, onStatus('okx')),
       Bitstamp.connectTrades(symbol, handleTrade, onStatus('bitstamp')),
+      Binance.connectTrades(symbol, handleTrade, onStatus('binance')),
     ];
 
     return () => {

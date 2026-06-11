@@ -17,7 +17,6 @@ export function connect(
 ): ExchangeConnection {
   const mapping = SYMBOL_MAP[symbol];
   if (!mapping?.bybit) {
-    onStatus('disconnected');
     return { close: () => {} };
   }
 
@@ -55,7 +54,6 @@ export function connectTrades(
 ): ExchangeConnection {
   const mapping = SYMBOL_MAP[symbol];
   if (!mapping?.bybit) {
-    onStatus('disconnected');
     return { close: () => {} };
   }
 

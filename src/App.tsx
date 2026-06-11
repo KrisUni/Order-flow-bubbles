@@ -25,6 +25,7 @@ function App() {
   const cvdRef = useRef<CvdHandle | null>(null);
   const detectorRef = useRef<Detector | null>(new Detector());
   const currentCandleRef = useRef<Candle | null>(null);
+  const closedCandleRef = useRef<Candle | null>(null);
   const compositeVolRef = useRef<Map<number, VolEntry>>(new Map());
 
   const anyPanelOpen = useStore(
@@ -37,7 +38,7 @@ function App() {
     detectorRef.current?.setThreshold(detectionThreshold);
   }, [detectionThreshold]);
 
-  useBinanceStream(chartRef, detectorRef, currentCandleRef, compositeVolRef);
+  useBinanceStream(chartRef, detectorRef, currentCandleRef, closedCandleRef, compositeVolRef);
 
   useMultiExchangePrice((point) => {
     const t = currentCandleRef.current?.time;
@@ -45,7 +46,7 @@ function App() {
     chartRef.current?.addVWAPPoint(t as UTCTimestamp, point.mid);
   });
 
-  useMultiExchangeTrades(detectorRef, currentCandleRef, compositeVolRef);
+  useMultiExchangeTrades(detectorRef, currentCandleRef, closedCandleRef, compositeVolRef);
 
   // Wire bidirectional time-axis sync between main chart and CVD panel
   useEffect(() => {

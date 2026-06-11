@@ -1,13 +1,11 @@
 import { useEffect, useRef } from 'react';
-import type { UTCTimestamp } from 'lightweight-charts';
 import type { Candle, Bubble, VolEntry } from '../lib/types';
 import type { ChartHandle } from '../components/Chart';
 import type { Detector } from '../lib/detector';
 import { classifyTrade } from '../lib/detector';
 import { useStore } from '../lib/config';
 import { INTERVAL_SECS } from '../lib/constants';
-import { getAutoCachedTrades, appendAutoCachedTrade } from '../lib/autoCache';
-import { evaluateAlerts } from '../lib/alerts';
+import { getAutoCachedTrades } from '../lib/autoCache';
 import {
   loadPriceHistory,
   savePriceHistory,
@@ -15,40 +13,24 @@ import {
   saveDetectorWindow,
   loadDetectorWindow,
 } from '../lib/priceDB';
+import { binanceProvider } from '../lib/candles/binance';
+import { bybitProvider } from '../lib/candles/bybit';
+import { candleSourceFor } from '../lib/exchanges/symbolMap';
+import type { KlineUpdate } from '../lib/candles/types';
 
-const BINANCE_REST = 'https://api.binance.com/api/v3';
 const CANDLE_LIMIT = 500;
-
-interface AggTrade {
-  p: string; // price
-  q: string; // quantity
-  m: boolean; // isMaker
-  T: number; // timestamp ms
-  a: number; // agg trade id
-}
-
-interface BinanceKline {
-  t: number; // open time ms
-  o: string;
-  h: string;
-  l: string;
-  c: string;
-  v: string; // total base asset volume
-  V: string; // taker buy base asset volume
-}
 
 export function useBinanceStream(
   chartRef: React.RefObject<ChartHandle | null>,
   detectorRef: React.RefObject<Detector | null>,
   currentCandleRef: React.RefObject<Candle | null>,
+  closedCandleRef: React.RefObject<Candle | null>,
   compositeVolRef: React.RefObject<Map<number, VolEntry>>,
 ): void {
   const symbol = useStore((s) => s.symbol);
   const interval = useStore((s) => s.interval);
   const showPatterns = useStore((s) => s.showPatterns);
   const autoLoadTrades = useStore((s) => s.autoLoadTrades);
-  const addBubble = useStore((s) => s.addBubble);
-  const addToTradesLog = useStore((s) => s.addToTradesLog);
   const setBubbles = useStore((s) => s.setBubbles);
   const replaceBubbles = useStore((s) => s.replaceBubbles);
   const setTradesLog = useStore((s) => s.setTradesLog);
@@ -58,8 +40,8 @@ export function useBinanceStream(
   const setLastTick = useStore((s) => s.setLastTick);
 
   const wsRef = useRef<WebSocket[]>([]);
+  const closeKlineRef = useRef<(() => void) | null>(null);
   const candlesRef = useRef<Map<number, Candle>>(new Map());
-  const closedCandleRef = useRef<Candle | null>(null);
   const prevSymbolRef = useRef<string>(symbol);
   const didMountFilterRef = useRef(false);
 
@@ -76,9 +58,11 @@ export function useBinanceStream(
 
     let cancelled = false;
 
+    const provider = candleSourceFor(symbol) === 'bybit' ? bybitProvider : binanceProvider;
+
     async function init() {
       chartRef.current?.clearChart();
-      setExchangeStatus('binance', 'connecting');
+      setExchangeStatus('candles', 'connecting');
 
       // Restore detector window before stream opens so first trades have context
       const savedWindow = await loadDetectorWindow(symbol, interval);
@@ -112,44 +96,24 @@ export function useBinanceStream(
         currentCandleRef.current = stored[stored.length - 1] ?? null;
       }
 
-      // 2. Fetch from Binance REST — delta if gap small, else latest CANDLE_LIMIT
+      // 2. Fetch from provider REST — delta if gap small, else latest CANDLE_LIMIT
       try {
         const keys = Array.from(candlesRef.current.keys());
         const lastTime = keys.length > 0 ? keys.reduce((a, b) => Math.max(a, b), 0) : null;
         const intervalSecs = INTERVAL_SECS[interval] ?? 60;
-        let url = `${BINANCE_REST}/klines?symbol=${symbol}&interval=${interval}&limit=${CANDLE_LIMIT}`;
+        let startTimeMs: number | undefined;
         let fullRefresh = false;
         if (lastTime) {
           const gapCandles = Math.floor((Date.now() / 1000 - lastTime) / intervalSecs);
           if (gapCandles < CANDLE_LIMIT) {
-            url += `&startTime=${lastTime * 1000}`;
+            startTimeMs = lastTime * 1000;
           } else {
             fullRefresh = true;
           }
         }
 
-        const resp = await fetch(url);
-        if (!resp.ok) return;
-        const raw: unknown[][] = await resp.json();
+        const fresh: Candle[] = await provider.fetchKlines(symbol, interval, startTimeMs);
         if (cancelled) return;
-
-        const fresh: Candle[] = raw
-          .map((k) => {
-            const open  = parseFloat(k[1] as string);
-            const high  = parseFloat(k[2] as string);
-            const low   = parseFloat(k[3] as string);
-            const close = parseFloat(k[4] as string);
-            if (!isFinite(open) || !isFinite(high) || !isFinite(low) || !isFinite(close)) return null;
-            const vol = parseFloat(k[5] as string);
-            const tbv = parseFloat(k[9] as string);
-            return {
-              time: (Math.floor((k[0] as number) / 1000)) as UTCTimestamp,
-              open, high, low, close,
-              volume: isFinite(vol) ? vol : 0,
-              takerBuyVolume: isFinite(tbv) ? tbv : undefined,
-            };
-          })
-          .filter((c): c is Candle => c !== null);
 
         if (fresh.length > 0) {
           if (fullRefresh) {
@@ -253,67 +217,23 @@ export function useBinanceStream(
     function openStream() {
       const sym = symbol.toLowerCase();
 
-      const klineWs = new WebSocket(
-        `wss://stream.binance.com:9443/ws/${sym}@kline_${interval}`,
+      closeKlineRef.current = provider.openKlineStream(
+        symbol,
+        interval,
+        (update) => { if (!cancelled) handleKline(update); },
+        (status) => { if (!cancelled) setExchangeStatus('candles', status as Parameters<typeof setExchangeStatus>[1]); },
       );
-      const tradeWs = new WebSocket(
-        `wss://stream.binance.com:9443/ws/${sym}@aggTrade`,
-      );
-      wsRef.current = [klineWs, tradeWs];
-
-      klineWs.onopen = () => setExchangeStatus('binance', 'connected');
-      klineWs.onerror = () => setExchangeStatus('binance', 'error');
-      klineWs.onclose = () => {
-        if (!cancelled) setExchangeStatus('binance', 'disconnected');
-      };
-      klineWs.onmessage = (evt) => {
-        if (cancelled) return;
-        try {
-          const msg = JSON.parse(evt.data as string) as {
-            e?: string;
-            k?: BinanceKline & { x?: boolean };
-          };
-          if (msg.e === 'kline' && msg.k) handleKline(msg.k);
-        } catch { /* ignore */ }
-      };
-
-      tradeWs.onmessage = (evt) => {
-        if (cancelled) return;
-        try {
-          const msg = JSON.parse(evt.data as string) as AggTrade & { e: string };
-          if (msg.e === 'aggTrade') handleAggTrade(msg);
-        } catch { /* ignore */ }
-      };
     }
 
-    function handleKline(k: BinanceKline & { x?: boolean }) {
+    function handleKline({ candle, closed }: KlineUpdate) {
       setLastTick();
-      const open  = parseFloat(k.o);
-      const high  = parseFloat(k.h);
-      const low   = parseFloat(k.l);
-      const close = parseFloat(k.c);
-      // Guard: lightweight-charts throws "Value is null" if any OHLC is NaN
-      if (!isFinite(open) || !isFinite(high) || !isFinite(low) || !isFinite(close)) return;
-
-      const vol = parseFloat(k.v);
-      const tbv = parseFloat(k.V);
-      const candle: Candle = {
-        time: (Math.floor(k.t / 1000)) as UTCTimestamp,
-        open,
-        high,
-        low,
-        close,
-        volume: isFinite(vol) ? vol : 0,
-        takerBuyVolume: isFinite(tbv) ? tbv : undefined,
-      };
       candlesRef.current.set(candle.time as number, candle);
       currentCandleRef.current = candle;
 
-      if (k.x) {
-        closedCandleRef.current = candle; // lock in final OHLC for classification
+      if (closed) {
+        closedCandleRef.current = candle;
         chartRef.current?.addCandle(candle);
         mergeCandleIntoHistory(symbol, interval, candle).catch(console.error);
-        // Checkpoint detector window on every closed candle
         const w = detectorRef.current?.getWindow();
         if (w && w.length > 0) saveDetectorWindow(symbol, interval, w).catch(console.error);
       } else {
@@ -321,83 +241,13 @@ export function useBinanceStream(
       }
     }
 
-    function handleAggTrade(t: AggTrade & { e: string }) {
-      const detector = detectorRef.current;
-      if (!detector) return;
-
-      const rawTrade = {
-        price: parseFloat(t.p),
-        qty: parseFloat(t.q),
-        isMaker: t.m,
-        timestamp: t.T,
-      };
-
-      // Accumulate ALL Binance trades into composite vol (not just detected ones)
-      const intervalSecs = INTERVAL_SECS[interval] ?? 60;
-      const candleTime = Math.floor(rawTrade.timestamp / 1000 / intervalSecs) * intervalSecs;
-      const vol = compositeVolRef.current.get(candleTime) ?? { buyVol: 0, sellVol: 0 };
-      if (rawTrade.isMaker) vol.sellVol += rawTrade.qty;
-      else vol.buyVol += rawTrade.qty;
-      compositeVolRef.current.set(candleTime, vol);
-
-      const result = detector.processTrade(rawTrade);
-      if (!result) return;
-
-      const tradeTime = Math.floor(rawTrade.timestamp / 1000);
-      const id = `binance-${t.a}-${t.T}`;
-
-      // Classify against CLOSED candle (final OHLC); fall back to live candle if no close yet
-      // Read showPatterns from store directly — avoids stale closure (effect runs on [symbol, interval] only)
-      const classifyCandle = closedCandleRef.current ?? currentCandleRef.current;
-      const classification = (classifyCandle && useStore.getState().showPatterns)
-        ? classifyTrade(result, classifyCandle)
-        : {};
-
-      const logEntry = {
-        id,
-        time: tradeTime,
-        price: rawTrade.price,
-        qty: rawTrade.qty,
-        usdValue: result.usdValue,
-        isMaker: rawTrade.isMaker,
-        pattern: classification.pattern,
-        patternSignal: classification.patternSignal,
-        exchange: 'binance',
-      };
-
-      appendAutoCachedTrade(symbol, logEntry).catch(console.error);
-      evaluateAlerts(logEntry);
-
-      // Display filter — only gates what's shown, not what's stored
-      const { minUsdFilter } = useStore.getState();
-      if (minUsdFilter > 0 && result.usdValue < minUsdFilter) return;
-      if (!currentCandleRef.current) return;
-
-      const bubble: Bubble = {
-        id,
-        time: candleTime,
-        price: rawTrade.price,
-        qty: rawTrade.qty,
-        usdValue: result.usdValue,
-        isMaker: rawTrade.isMaker,
-        pattern: classification.pattern,
-        patternSignal: classification.patternSignal,
-        exchange: 'binance',
-        birthMs: Date.now(),
-      };
-
-      addBubble(bubble);
-      addToTradesLog(logEntry);
-    }
-
     init();
 
     return () => {
       cancelled = true;
-      wsRef.current.forEach((ws) => ws.close());
-      wsRef.current = [];
-      setExchangeStatus('binance', 'disconnected');
-      // Best-effort save of detector window on unmount/symbol change
+      closeKlineRef.current?.();
+      closeKlineRef.current = null;
+      setExchangeStatus('candles', 'disconnected');
       const w = detectorRef.current?.getWindow();
       if (w && w.length > 0) saveDetectorWindow(symbol, interval, w).catch(console.error);
     };
