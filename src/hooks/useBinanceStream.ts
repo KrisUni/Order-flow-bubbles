@@ -61,6 +61,7 @@ export function useBinanceStream(
   const candlesRef = useRef<Map<number, Candle>>(new Map());
   const closedCandleRef = useRef<Candle | null>(null);
   const prevSymbolRef = useRef<string>(symbol);
+  const didMountFilterRef = useRef(false);
 
   useEffect(() => {
     const symbolChanged = symbol !== prevSymbolRef.current;
@@ -403,7 +404,14 @@ export function useBinanceStream(
   // DB stores all detector-filtered trades; bubbles = USD-filtered display view.
   const minUsdFilter = useStore((s) => s.minUsdFilter);
   useEffect(() => {
-    if (!autoLoadTrades) return;
+    if (!didMountFilterRef.current) { didMountFilterRef.current = true; return; }
+    if (!autoLoadTrades) {
+      const { bubbles: cur } = useStore.getState();
+      replaceBubbles(
+        minUsdFilter === 0 ? cur : cur.filter((b) => b.usdValue >= minUsdFilter),
+      );
+      return;
+    }
     async function rederive() {
       const trades = await getAutoCachedTrades(symbol);
       const intervalSecs = INTERVAL_SECS[interval] ?? 60;
@@ -438,7 +446,10 @@ export function useBinanceStream(
       // won't be in `rederived` yet (DB write is async). Keep them so they don't disappear.
       const currentBubbles = useStore.getState().bubbles;
       const liveNotInDB = currentBubbles.filter(
-        (b) => b.birthMs > 0 && !rederived.some((r) => r.id === b.id),
+        (b) =>
+          b.birthMs > 0 &&
+          (minUsdFilter === 0 || b.usdValue >= minUsdFilter) &&
+          !rederived.some((r) => r.id === b.id),
       );
       replaceBubbles([...rederived, ...liveNotInDB]);
       setTradesLog(filtered);

@@ -89,14 +89,15 @@ const Chart = forwardRef<ChartHandle, ChartProps>(function Chart({ binanceVolRef
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const candlesForProfileRef = useRef<Candle[]>([]);
   const dirtyRef = useRef(true);
-  const selectedIdRef = useRef(selectedId);
-  const showDeltaBubblesRef = useRef(showDeltaBubbles);
 
   const bubbles = useStore((s) => s.bubbles);
   const selectedId = useStore((s) => s.selectedBubbleId);
   const showVolumeProfile = useStore((s) => s.showVolumeProfile);
   const showContractQty = useStore((s) => s.showContractQty);
   const showDeltaBubbles = useStore((s) => s.showDeltaBubbles);
+
+  const selectedIdRef = useRef(selectedId);
+  const showDeltaBubblesRef = useRef(showDeltaBubbles);
 
   // Merge Binance kline volume + other-exchange accumulated volume for a candle timestamp
   function getCrossVol(t: number): VolEntry | null {
