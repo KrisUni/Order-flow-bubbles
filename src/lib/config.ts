@@ -45,7 +45,6 @@ interface RuntimeState {
   selectedBubbleId: string | null;
   tradesPanelOpen: boolean;
   settingsPanelOpen: boolean;
-  sessionPanelOpen: boolean;
   exchangeStatuses: Record<string, ConnectionStatus>;
   lastTickMs: number;
 }
@@ -56,7 +55,6 @@ const RUNTIME_DEFAULTS: RuntimeState = {
   selectedBubbleId: null,
   tradesPanelOpen: false,
   settingsPanelOpen: false,
-  sessionPanelOpen: false,
   exchangeStatuses: {},
   lastTickMs: 0,
 };
@@ -74,9 +72,9 @@ interface AppActions {
   setTradesLog: (trades: BigTrade[]) => void;
   clearTradesLog: () => void;
   // panels
-  openPanel: (panel: 'trades' | 'settings' | 'session') => void;
-  closePanel: (panel: 'trades' | 'settings' | 'session') => void;
-  togglePanel: (panel: 'trades' | 'settings' | 'session') => void;
+  openPanel: (panel: 'trades' | 'settings') => void;
+  closePanel: (panel: 'trades' | 'settings') => void;
+  togglePanel: (panel: 'trades' | 'settings') => void;
   // config
   setSymbol: (s: string) => void;
   setInterval: (i: string) => void;
@@ -150,29 +148,23 @@ export const useStore = create<AppState>()(
       // ── Panel actions ──
       openPanel: (panel) =>
         set({
-          tradesPanelOpen: panel === 'trades' ? true : false,
-          settingsPanelOpen: panel === 'settings' ? true : false,
-          sessionPanelOpen: panel === 'session' ? true : false,
+          tradesPanelOpen: panel === 'trades',
+          settingsPanelOpen: panel === 'settings',
         }),
 
       closePanel: (panel) =>
         set((s) => ({
           tradesPanelOpen: panel === 'trades' ? false : s.tradesPanelOpen,
           settingsPanelOpen: panel === 'settings' ? false : s.settingsPanelOpen,
-          sessionPanelOpen: panel === 'session' ? false : s.sessionPanelOpen,
         })),
 
       // Only one panel open at a time — clicking active panel closes it
       togglePanel: (panel) =>
         set((s) => {
-          const isOpen =
-            panel === 'trades' ? s.tradesPanelOpen :
-            panel === 'settings' ? s.settingsPanelOpen :
-            s.sessionPanelOpen;
+          const isOpen = panel === 'trades' ? s.tradesPanelOpen : s.settingsPanelOpen;
           return {
             tradesPanelOpen: panel === 'trades' ? !isOpen : false,
             settingsPanelOpen: panel === 'settings' ? !isOpen : false,
-            sessionPanelOpen: panel === 'session' ? !isOpen : false,
           };
         }),
 

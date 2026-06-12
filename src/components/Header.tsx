@@ -28,7 +28,6 @@ export default function Header() {
   const setIntervalStore = useStore((s) => s.setInterval);
   const tradesPanelOpen = useStore((s) => s.tradesPanelOpen);
   const settingsPanelOpen = useStore((s) => s.settingsPanelOpen);
-  const sessionPanelOpen = useStore((s) => s.sessionPanelOpen);
   const togglePanel = useStore((s) => s.togglePanel);
   const exchangeStatuses = useStore((s) => s.exchangeStatuses);
   const lastTickMs = useStore((s) => s.lastTickMs);
@@ -204,12 +203,6 @@ export default function Header() {
             onClick={() => togglePanel('trades')}
           >
             Trades
-          </button>
-          <button
-            className={`header-btn${sessionPanelOpen ? ' active' : ''}`}
-            onClick={() => togglePanel('session')}
-          >
-            Session
           </button>
           <button
             className={`header-btn${settingsPanelOpen ? ' active' : ''}`}

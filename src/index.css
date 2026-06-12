@@ -559,30 +559,6 @@ body {
   text-transform: uppercase;
 }
 
-/* ── Session manager ── */
-.session-info {
-  color: var(--text-dim);
-  font-size: 11px;
-}
-
-.session-btn {
-  width: 100%;
-  background: var(--bg3);
-  color: var(--text);
-  border: 1px solid var(--border);
-  border-radius: 4px;
-  padding: 7px 12px;
-  font-size: 12px;
-  font-family: inherit;
-  cursor: pointer;
-  text-align: left;
-  transition: background 0.1s;
-}
-
-.session-btn:hover {
-  background: var(--border);
-}
-
 /* ── Legend ── */
 .legend {
   position: absolute;

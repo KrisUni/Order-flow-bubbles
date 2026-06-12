@@ -11,7 +11,6 @@ import Header from './components/Header';
 import StatsStrip from './components/StatsStrip';
 import SettingsPanel from './components/SettingsPanel';
 import TradesLog from './components/TradesLog';
-import SessionManager from './components/SessionManager';
 import Legend from './components/Legend';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { useStore } from './lib/config';
@@ -29,7 +28,7 @@ function App() {
   const compositeVolRef = useRef<Map<number, VolEntry>>(new Map());
 
   const anyPanelOpen = useStore(
-    (s) => s.tradesPanelOpen || s.settingsPanelOpen || s.sessionPanelOpen,
+    (s) => s.tradesPanelOpen || s.settingsPanelOpen,
   );
   const panelWidth = useStore((s) => s.panelWidth);
   const showCvd = useStore((s) => s.showCvd);
@@ -98,9 +97,6 @@ function App() {
           </ErrorBoundary>
           <ErrorBoundary label="Settings">
             <SettingsPanel />
-          </ErrorBoundary>
-          <ErrorBoundary label="Session">
-            <SessionManager />
           </ErrorBoundary>
         </div>
       </div>
