@@ -1,7 +1,7 @@
 import type { ExchangeConnection, OnStatus } from '../types';
 import type { RawTrade } from '../detector';
 import { safeWS } from './safeWS';
-import { SYMBOL_MAP } from './symbolMap';
+import { getMapping } from './symbolMap';
 import { toMs } from './normalizeTime';
 
 export function connectTrades(
@@ -9,7 +9,7 @@ export function connectTrades(
   onTrade: (trade: RawTrade & { exchange: string }) => void,
   onStatus: OnStatus,
 ): ExchangeConnection {
-  const mapping = SYMBOL_MAP[symbol];
+  const mapping = getMapping(symbol);
   if (!mapping?.bybitPerp) return { close: () => {} };
 
   const sym = mapping.bybitPerp;

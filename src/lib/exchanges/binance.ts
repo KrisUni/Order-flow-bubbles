@@ -1,7 +1,7 @@
 import type { ExchangeConnection, OnStatus } from '../types';
 import type { RawTrade } from '../detector';
 import { safeWS } from './safeWS';
-import { SYMBOL_MAP } from './symbolMap';
+import { getMapping } from './symbolMap';
 
 export interface BookTicker {
   bidPrice: number;
@@ -14,7 +14,7 @@ export function connect(
   onTicker: (ticker: BookTicker) => void,
   onStatus: OnStatus,
 ): ExchangeConnection {
-  const mapping = SYMBOL_MAP[symbol];
+  const mapping = getMapping(symbol);
   if (!mapping?.binance) {
     onStatus('disconnected');
     return { close: () => {} };
@@ -45,7 +45,7 @@ export function connectTrades(
   onTrade: (trade: RawTrade & { exchange: string; nativeId?: string }) => void,
   onStatus: OnStatus,
 ): ExchangeConnection {
-  const mapping = SYMBOL_MAP[symbol];
+  const mapping = getMapping(symbol);
   if (!mapping?.binance) return { close: () => {} };
 
   const sym = mapping.binance.toLowerCase();

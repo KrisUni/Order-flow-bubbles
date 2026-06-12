@@ -177,6 +177,47 @@ body {
   cursor: pointer;
 }
 
+.symbol-input-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.header-input {
+  background: var(--bg3);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 3px 6px;
+  font-size: 12px;
+  font-family: inherit;
+  width: 110px;
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.header-input:focus {
+  border-color: var(--accent);
+}
+
+.header-input--error {
+  border-color: var(--red);
+}
+
+.header-input:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.symbol-resolving {
+  position: absolute;
+  right: 6px;
+  font-size: 10px;
+  color: var(--yellow);
+  pointer-events: none;
+  white-space: nowrap;
+}
+
 .interval-group {
   display: flex;
   gap: 2px;
@@ -275,6 +316,49 @@ body {
 
 .feed-banner-dismiss:hover {
   color: var(--text);
+}
+
+/* ── Resolve chips row ── */
+.resolve-chips-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 12px;
+  background: var(--bg2);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+  flex-wrap: wrap;
+}
+
+.resolve-chips-row--error {
+  background: rgba(239, 68, 68, 0.07);
+  border-bottom-color: rgba(239, 68, 68, 0.3);
+}
+
+.resolve-error-msg {
+  font-size: 11px;
+  color: var(--red);
+  margin-right: 6px;
+}
+
+.venue-chip {
+  font-size: 10px;
+  padding: 1px 5px;
+  border-radius: 3px;
+  border: 1px solid var(--border);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.venue-chip--ok {
+  color: var(--green);
+  border-color: rgba(34, 197, 94, 0.4);
+  background: rgba(34, 197, 94, 0.08);
+}
+
+.venue-chip--miss {
+  color: var(--text-dim);
+  background: transparent;
 }
 
 /* ── Side panels ── */

@@ -1,14 +1,14 @@
 import type { ExchangeConnection, OnStatus } from '../types';
 import type { RawTrade } from '../detector';
 import { safeWS } from './safeWS';
-import { SYMBOL_MAP } from './symbolMap';
+import { getMapping } from './symbolMap';
 
 export function connectTrades(
   symbol: string,
   onTrade: (trade: RawTrade & { exchange: string; nativeId?: string }) => void,
   onStatus: OnStatus,
 ): ExchangeConnection {
-  const mapping = SYMBOL_MAP[symbol];
+  const mapping = getMapping(symbol);
   if (!mapping?.binancePerp) return { close: () => {} };
 
   const sym = mapping.binancePerp.toLowerCase();

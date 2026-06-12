@@ -17,6 +17,7 @@ export interface AppConfig {
   showCvd: boolean;           // show CVD sub-panel below chart
   panelWidth: number;         // side panel width in px, clamped [240, 560]
   includePerps: boolean;      // connect binance-perp, bybit-perp, okx-perp feeds
+  recentSymbols: string[];    // recently resolved symbols, max 8
   alertRules: AlertRule[];
 }
 
@@ -33,6 +34,7 @@ const CONFIG_DEFAULTS: AppConfig = {
   showCvd: true,
   panelWidth: 320,
   includePerps: true,
+  recentSymbols: [],
   alertRules: [],
 };
 
@@ -88,6 +90,7 @@ interface AppActions {
   setShowCvd: (v: boolean) => void;
   setPanelWidth: (w: number) => void;
   setIncludePerps: (v: boolean) => void;
+  addRecentSymbol: (s: string) => void;
   // alerts
   addAlertRule: (rule: AlertRule) => void;
   updateAlertRule: (id: string, patch: Partial<AlertRule>) => void;
@@ -186,6 +189,11 @@ export const useStore = create<AppState>()(
       setShowCvd: (showCvd) => set({ showCvd }),
       setPanelWidth: (w) => set({ panelWidth: Math.min(560, Math.max(240, w)) }),
       setIncludePerps: (includePerps) => set({ includePerps }),
+      addRecentSymbol: (s) =>
+        set((state) => {
+          const filtered = state.recentSymbols.filter((x) => x !== s);
+          return { recentSymbols: [s, ...filtered].slice(0, 8) };
+        }),
 
       // ── Alert rules ──
       addAlertRule: (rule) => set((s) => ({ alertRules: [...s.alertRules, rule] })),
@@ -227,6 +235,7 @@ export const useStore = create<AppState>()(
         showCvd: s.showCvd,
         panelWidth: s.panelWidth,
         includePerps: s.includePerps,
+        recentSymbols: s.recentSymbols,
         alertRules: s.alertRules,
       }),
     },

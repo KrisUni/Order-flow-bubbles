@@ -2,8 +2,9 @@ import { useState, useEffect, useRef } from 'react';
 import { useStore } from '../lib/config';
 import { INTERVALS } from '../lib/constants';
 import { SYMBOL_MAP } from '../lib/exchanges/symbolMap';
+import { resolveSymbol, type ResolvedSymbol } from '../lib/exchanges/resolver';
 
-const SYMBOLS = Object.keys(SYMBOL_MAP);
+const STATIC_SYMBOLS = Object.keys(SYMBOL_MAP);
 
 const STATUS_COLOR: Record<string, string> = {
   connected: '#22c55e',
@@ -13,6 +14,12 @@ const STATUS_COLOR: Record<string, string> = {
 };
 
 const EXCHANGES = ['candles', 'binance', 'binance-perp', 'coinbase', 'kraken', 'bybit', 'bybit-perp', 'okx', 'okx-perp', 'bitstamp'] as const;
+
+const VENUE_LABELS: Record<string, string> = {
+  binance: 'BN', bybit: 'BB', okx: 'OKX', kraken: 'KRK', bitstamp: 'BST',
+  coinbase: 'CB', 'binance-perp': 'BNP', 'bybit-perp': 'BBP', 'okx-perp': 'OKP',
+};
+const VENUE_ORDER = ['binance', 'bybit', 'okx', 'kraken', 'bitstamp', 'coinbase', 'binance-perp', 'bybit-perp', 'okx-perp'] as const;
 
 export default function Header() {
   const symbol = useStore((s) => s.symbol);
@@ -25,6 +32,72 @@ export default function Header() {
   const togglePanel = useStore((s) => s.togglePanel);
   const exchangeStatuses = useStore((s) => s.exchangeStatuses);
   const lastTickMs = useStore((s) => s.lastTickMs);
+  const recentSymbols = useStore((s) => s.recentSymbols);
+  const addRecentSymbol = useStore((s) => s.addRecentSymbol);
+
+  // Symbol input state
+  const [inputVal, setInputVal] = useState(symbol);
+  const [resolving, setResolving] = useState(false);
+  const [resolveError, setResolveError] = useState<string | null>(null);
+  const [resolvedResult, setResolvedResult] = useState<ResolvedSymbol | null>(null);
+  const [chipsVisible, setChipsVisible] = useState(false);
+  const chipsTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Sync input when symbol changes externally (session restore, etc.)
+  useEffect(() => { setInputVal(symbol); }, [symbol]);
+
+  function clearChipsTimer() {
+    if (chipsTimerRef.current !== null) {
+      clearTimeout(chipsTimerRef.current);
+      chipsTimerRef.current = null;
+    }
+  }
+
+  async function handleResolve() {
+    const raw = inputVal.trim();
+    if (!raw) return;
+    clearChipsTimer();
+    setResolving(true);
+    setResolveError(null);
+    setChipsVisible(false);
+    try {
+      const result = await resolveSymbol(raw);
+      if (result.candleSource === null) {
+        setResolveError(`No candle source found for "${raw.toUpperCase()}"`);
+        setResolvedResult(result);
+        setChipsVisible(true);
+        return;
+      }
+      setResolvedResult(result);
+      setChipsVisible(true);
+      addRecentSymbol(result.canonical);
+      setSymbol(result.canonical);
+      setInputVal(result.canonical);
+      chipsTimerRef.current = setTimeout(() => {
+        setChipsVisible(false);
+        chipsTimerRef.current = null;
+      }, 6000);
+    } catch {
+      setResolveError(`Could not resolve "${raw.toUpperCase()}"`);
+      setChipsVisible(true);
+    } finally {
+      setResolving(false);
+    }
+  }
+
+  function handleInputChange(v: string) {
+    setInputVal(v);
+    if (resolveError) {
+      setResolveError(null);
+      setChipsVisible(false);
+    }
+  }
+
+  // Datalist options: recent first, then static (deduped)
+  const datalistOptions = [
+    ...recentSymbols,
+    ...STATIC_SYMBOLS.filter((s) => !recentSymbols.includes(s)),
+  ];
 
   // Freshness stamp
   const [nowMs, setNowMs] = useState(Date.now());
@@ -76,17 +149,24 @@ export default function Header() {
         <div className="header-left">
           <span className="header-logo">◉ Bubbles</span>
 
-          <select
-            value={symbol}
-            onChange={(e) => setSymbol(e.target.value)}
-            className="header-select"
-          >
-            {SYMBOLS.map((s) => (
-              <option key={s} value={s}>
-                {s}
-              </option>
-            ))}
-          </select>
+          <div className="symbol-input-wrap">
+            <input
+              id="symbol-datalist-input"
+              list="symbol-datalist"
+              className={`header-input${resolveError ? ' header-input--error' : ''}`}
+              value={inputVal}
+              disabled={resolving}
+              placeholder="e.g. BTCUSDT"
+              onChange={(e) => handleInputChange(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') void handleResolve(); }}
+            />
+            <datalist id="symbol-datalist">
+              {datalistOptions.map((s) => (
+                <option key={s} value={s} />
+              ))}
+            </datalist>
+            {resolving && <span className="symbol-resolving">resolving…</span>}
+          </div>
 
           <div className="interval-group">
             {INTERVALS.map((iv) => (
@@ -139,6 +219,24 @@ export default function Header() {
           </button>
         </div>
       </header>
+
+      {chipsVisible && resolvedResult && (
+        <div className={`resolve-chips-row${resolveError ? ' resolve-chips-row--error' : ''}`}>
+          {resolveError && <span className="resolve-error-msg">{resolveError}</span>}
+          {VENUE_ORDER.map((v) => {
+            const active = resolvedResult.venues[v] != null;
+            return (
+              <span
+                key={v}
+                className={`venue-chip${active ? ' venue-chip--ok' : ' venue-chip--miss'}`}
+                title={resolvedResult.venues[v] ?? 'not found'}
+              >
+                {VENUE_LABELS[v]} {active ? '✓' : '✗'}
+              </span>
+            );
+          })}
+        </div>
+      )}
 
       {showBanner && (
         <div className="feed-banner">
