@@ -7,6 +7,7 @@ export function openDB(): Promise<IDBDatabase> {
   if (_db) return Promise.resolve(_db);
   return new Promise((resolve, reject) => {
     const req = indexedDB.open(DB_NAME, DB_VERSION);
+
     req.onupgradeneeded = (e) => {
       const db = (e.target as IDBOpenDBRequest).result;
       // v1-v3 stores
@@ -16,13 +17,33 @@ export function openDB(): Promise<IDBDatabase> {
       // v4: detector rolling window persistence
       if (!db.objectStoreNames.contains('detector-state')) db.createObjectStore('detector-state');
     };
+
+    // Another tab still holds the DB open at an older version — the upgrade
+    // cannot proceed until that tab closes. Surface it instead of hanging silently.
+    req.onblocked = () => {
+      console.warn('[db] upgrade blocked — close other tabs running this app');
+    };
+
     req.onsuccess = () => {
       _db = req.result;
-      // Reset singleton if the connection closes or errors — next call will reopen cleanly
+      // Reset singleton if the connection closes — next call reopens cleanly
       _db.onclose = () => { _db = null; };
-      _db.onerror = () => { _db = null; };
+      // Another tab is requesting a version upgrade: close our connection so it
+      // can proceed (otherwise THAT tab hangs in `blocked` forever).
+      _db.onversionchange = () => {
+        _db?.close();
+        _db = null;
+      };
+      // NOTE: deliberately no `onerror = () => { _db = null }` here.
+      // Request/transaction errors bubble to the connection, but they do NOT
+      // invalidate it — nulling the singleton on every failed request would
+      // leak connections and churn reopens. Log and keep the connection.
+      _db.onerror = (e) => {
+        console.error('[db] unhandled IDB error', (e.target as IDBRequest)?.error);
+      };
       resolve(_db);
     };
+
     req.onerror = () => reject(req.error);
   });
 }
