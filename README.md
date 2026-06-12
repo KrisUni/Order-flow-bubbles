@@ -44,8 +44,6 @@ Order-flow tools that show you *who is actually trading* — footprint charts, t
 
 **Persistence without a server** — detected trades and candle history live in IndexedDB. Close the tab, come back tomorrow: your bubbles restore, re-binned and re-classified for whatever timeframe you open.
 
-**Optional AI agent** — a local Python loop that consumes candle-close snapshots, gates setups deterministically (structure-based stops, R:R, confluence scoring), asks a local LLM to approve or veto, and sends qualified signals to Telegram. Signals only — it never trades for you.
-
 ## 🚀 Quick Start
 
 ```bash
