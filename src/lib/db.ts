@@ -1,5 +1,5 @@
 export const DB_NAME = 'orderflow-v3';
-export const DB_VERSION = 4;
+export const DB_VERSION = 6;
 
 let _db: IDBDatabase | null = null;
 
