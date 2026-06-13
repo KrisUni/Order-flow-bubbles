@@ -15,6 +15,7 @@ import * as Coinbase from '../lib/exchanges/coinbase';
 import * as BinancePerp from '../lib/exchanges/binancePerp';
 import * as BybitPerp from '../lib/exchanges/bybitPerp';
 import * as OkxPerp from '../lib/exchanges/okxPerp';
+import * as HyperliquidPerp from '../lib/exchanges/hyperliquid';
 import type { RawTrade } from '../lib/detector';
 
 export function useMultiExchangeTrades(
@@ -118,6 +119,7 @@ export function useMultiExchangeTrades(
         BinancePerp.connectTrades(symbol, handleTrade, onStatus('binance-perp')),
         BybitPerp.connectTrades(symbol, handleTrade, onStatus('bybit-perp')),
         OkxPerp.connectTrades(symbol, handleTrade, onStatus('okx-perp')),
+        HyperliquidPerp.connectTrades(symbol, handleTrade, onStatus('hyperliquid')),
       ] : []),
     ];
 

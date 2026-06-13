@@ -15,6 +15,7 @@ import {
 } from '../lib/priceDB';
 import { binanceProvider } from '../lib/candles/binance';
 import { bybitProvider } from '../lib/candles/bybit';
+import { hyperliquidProvider } from '../lib/candles/hyperliquid';
 import { candleSourceFor } from '../lib/exchanges/symbolMap';
 import type { KlineUpdate } from '../lib/candles/types';
 
@@ -57,7 +58,8 @@ export function useBinanceStream(
 
     let cancelled = false;
 
-    const provider = candleSourceFor(symbol) === 'bybit' ? bybitProvider : binanceProvider;
+    const src = candleSourceFor(symbol);
+    const provider = src === 'bybit' ? bybitProvider : src === 'hyperliquid' ? hyperliquidProvider : binanceProvider;
 
     async function init() {
       chartRef.current?.clearChart();

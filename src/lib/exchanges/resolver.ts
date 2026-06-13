@@ -13,7 +13,7 @@ export interface ResolvedSymbol {
   canonical: string;
   base: string;
   venues: ResolvedVenues;
-  candleSource: 'binance' | 'bybit' | null;
+  candleSource: 'binance' | 'bybit' | 'hyperliquid' | null;
   resolvedAt: number;
 }
 
@@ -49,6 +49,24 @@ async function timedFetch(url: string): Promise<Response> {
   const timer = setTimeout(() => ctrl.abort(), PROBE_TIMEOUT_MS);
   try {
     const r = await fetch(url, { signal: ctrl.signal });
+    clearTimeout(timer);
+    return r;
+  } catch (e) {
+    clearTimeout(timer);
+    throw e;
+  }
+}
+
+async function timedPost(url: string, body: unknown): Promise<Response> {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), PROBE_TIMEOUT_MS);
+  try {
+    const r = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+      signal: ctrl.signal,
+    });
     clearTimeout(timer);
     return r;
   } catch (e) {
@@ -201,6 +219,28 @@ async function probeBitstamp(base: string): Promise<string | null> {
   }
 }
 
+// ── Hyperliquid perp universe cache (module-level, one POST per session) ─
+
+let hyperliquidMetaCache: Array<{ name: string }> | null = null;
+
+async function fetchHyperliquidMeta(): Promise<Array<{ name: string }>> {
+  if (hyperliquidMetaCache) return hyperliquidMetaCache;
+  const r = await timedPost('https://api.hyperliquid.xyz/info', { type: 'meta' });
+  const data = (await r.json()) as { universe: Array<{ name: string }> };
+  hyperliquidMetaCache = data.universe;
+  return hyperliquidMetaCache;
+}
+
+async function probeHyperliquid(base: string): Promise<string | null> {
+  try {
+    const universe = await fetchHyperliquidMeta();
+    return universe.some((a) => a.name === base) ? base : null;
+  } catch (e) {
+    console.warn('[resolver] probe failed', 'hyperliquid', base, e);
+    return null;
+  }
+}
+
 // ── Probe dispatch map ────────────────────────────────────────────
 
 type VenueKey = keyof ResolvedVenues;
@@ -215,11 +255,12 @@ const PROBERS: Record<VenueKey, (base: string) => Promise<string | null>> = {
   'binance-perp': probeBinancePerp,
   'bybit-perp':  probeBybitPerp,
   'okx-perp':    probeOkxPerp,
+  hyperliquid:   probeHyperliquid,
 };
 
 const ALL_VENUES: VenueKey[] = [
   'binance', 'bybit', 'okx', 'kraken', 'bitstamp',
-  'coinbase', 'binance-perp', 'bybit-perp', 'okx-perp',
+  'coinbase', 'binance-perp', 'bybit-perp', 'okx-perp', 'hyperliquid',
 ];
 
 // ── Public API ────────────────────────────────────────────────────
@@ -263,11 +304,12 @@ export async function resolveSymbol(raw: string): Promise<ResolvedSymbol> {
     'binance-perp': 'binance-perp' in override ? override['binance-perp']! : (probeResults['binance-perp'] ?? null),
     'bybit-perp':  'bybit-perp'    in override ? override['bybit-perp']!  : (probeResults['bybit-perp']  ?? null),
     'okx-perp':    'okx-perp'      in override ? override['okx-perp']!    : (probeResults['okx-perp']    ?? null),
+    hyperliquid:   'hyperliquid'   in override ? override.hyperliquid!    : (probeResults.hyperliquid    ?? null),
   };
 
   // 5. Determine candle source (respects CANDLE_FALLBACK overrides)
   const fallbackChain = CANDLE_FALLBACK[canonical] ?? CANDLE_FALLBACK.DEFAULT;
-  let candleSource: 'binance' | 'bybit' | null = null;
+  let candleSource: 'binance' | 'bybit' | 'hyperliquid' | null = null;
   for (const src of fallbackChain) {
     if (venues[src]) { candleSource = src; break; }
   }

@@ -8,11 +8,12 @@ export interface SymbolMapping {
   binancePerp?: string | null;
   bybitPerp?: string | null;
   okxPerp?: string | null;
+  hyperliquid?: string | null;
 }
 
 export const SYMBOL_MAP: Record<string, SymbolMapping> = {
-  BTCUSDT:  { binance: 'BTCUSDT',  kraken: 'BTC/USDT',  bybit: 'BTCUSDT',  okx: 'BTC-USDT',  bitstamp: 'btcusd',  coinbase: 'BTC-USD',  binancePerp: 'BTCUSDT',  bybitPerp: 'BTCUSDT',  okxPerp: 'BTC-USDT-SWAP'  },
-  ETHUSDT:  { binance: 'ETHUSDT',  kraken: 'ETH/USDT',  bybit: 'ETHUSDT',  okx: 'ETH-USDT',  bitstamp: 'ethusd',  coinbase: 'ETH-USD',  binancePerp: 'ETHUSDT',  bybitPerp: 'ETHUSDT',  okxPerp: 'ETH-USDT-SWAP'  },
+  BTCUSDT:  { binance: 'BTCUSDT',  kraken: 'BTC/USDT',  bybit: 'BTCUSDT',  okx: 'BTC-USDT',  bitstamp: 'btcusd',  coinbase: 'BTC-USD',  binancePerp: 'BTCUSDT',  bybitPerp: 'BTCUSDT',  okxPerp: 'BTC-USDT-SWAP',  hyperliquid: 'BTC'  },
+  ETHUSDT:  { binance: 'ETHUSDT',  kraken: 'ETH/USDT',  bybit: 'ETHUSDT',  okx: 'ETH-USDT',  bitstamp: 'ethusd',  coinbase: 'ETH-USD',  binancePerp: 'ETHUSDT',  bybitPerp: 'ETHUSDT',  okxPerp: 'ETH-USDT-SWAP',  hyperliquid: 'ETH'  },
   SOLUSDT:  { binance: 'SOLUSDT',  kraken: 'SOL/USDT',  bybit: 'SOLUSDT',  okx: 'SOL-USDT',                       coinbase: 'SOL-USD',  binancePerp: 'SOLUSDT',  bybitPerp: 'SOLUSDT',  okxPerp: 'SOL-USDT-SWAP'  },
   BNBUSDT:  { binance: 'BNBUSDT',                        bybit: 'BNBUSDT',  okx: 'BNB-USDT',                       coinbase: null,       binancePerp: 'BNBUSDT',  bybitPerp: 'BNBUSDT',  okxPerp: 'BNB-USDT-SWAP'  },
   XRPUSDT:  { binance: 'XRPUSDT',  kraken: 'XRP/USDT',  bybit: 'XRPUSDT',  okx: 'XRP-USDT',  bitstamp: 'xrpusd',  coinbase: 'XRP-USD',  binancePerp: 'XRPUSDT',  bybitPerp: 'XRPUSDT',  okxPerp: 'XRP-USDT-SWAP'  },
@@ -23,8 +24,8 @@ export const SYMBOL_MAP: Record<string, SymbolMapping> = {
 };
 
 // ── Candle skeleton preference ────────────────────────────────────
-export const CANDLE_FALLBACK: Record<string, ('binance' | 'bybit')[]> = {
-  DEFAULT: ['binance', 'bybit'],
+export const CANDLE_FALLBACK: Record<string, ('binance' | 'bybit' | 'hyperliquid')[]> = {
+  DEFAULT: ['binance', 'bybit', 'hyperliquid'],
   VVVUSDT: ['bybit'],
 };
 
@@ -39,14 +40,15 @@ export type ResolvedVenues = {
   'binance-perp': string | null;
   'bybit-perp': string | null;
   'okx-perp': string | null;
+  hyperliquid: string | null;
 };
 
 // Static overrides: curated venue strings that WIN over any probe result.
 // Explicit null = "curated not listed" (beats a probe false-positive).
 // Missing key = "probe normally".
 export const STATIC_OVERRIDES: Record<string, Partial<ResolvedVenues>> = {
-  BTCUSDT:  { binance: 'BTCUSDT',  bybit: 'BTCUSDT',  okx: 'BTC-USDT',  kraken: 'BTC/USDT',  bitstamp: 'btcusd',  coinbase: 'BTC-USD',  'binance-perp': 'BTCUSDT',  'bybit-perp': 'BTCUSDT',  'okx-perp': 'BTC-USDT-SWAP'  },
-  ETHUSDT:  { binance: 'ETHUSDT',  bybit: 'ETHUSDT',  okx: 'ETH-USDT',  kraken: 'ETH/USDT',  bitstamp: 'ethusd',  coinbase: 'ETH-USD',  'binance-perp': 'ETHUSDT',  'bybit-perp': 'ETHUSDT',  'okx-perp': 'ETH-USDT-SWAP'  },
+  BTCUSDT:  { binance: 'BTCUSDT',  bybit: 'BTCUSDT',  okx: 'BTC-USDT',  kraken: 'BTC/USDT',  bitstamp: 'btcusd',  coinbase: 'BTC-USD',  'binance-perp': 'BTCUSDT',  'bybit-perp': 'BTCUSDT',  'okx-perp': 'BTC-USDT-SWAP',  hyperliquid: 'BTC'  },
+  ETHUSDT:  { binance: 'ETHUSDT',  bybit: 'ETHUSDT',  okx: 'ETH-USDT',  kraken: 'ETH/USDT',  bitstamp: 'ethusd',  coinbase: 'ETH-USD',  'binance-perp': 'ETHUSDT',  'bybit-perp': 'ETHUSDT',  'okx-perp': 'ETH-USDT-SWAP',  hyperliquid: 'ETH'  },
   SOLUSDT:  { binance: 'SOLUSDT',  bybit: 'SOLUSDT',  okx: 'SOL-USDT',  kraken: 'SOL/USDT',                       coinbase: 'SOL-USD',  'binance-perp': 'SOLUSDT',  'bybit-perp': 'SOLUSDT',  'okx-perp': 'SOL-USDT-SWAP'  },
   BNBUSDT:  { binance: 'BNBUSDT',  bybit: 'BNBUSDT',  okx: 'BNB-USDT',                        coinbase: null,                         'binance-perp': 'BNBUSDT',  'bybit-perp': 'BNBUSDT',  'okx-perp': 'BNB-USDT-SWAP'  },
   XRPUSDT:  { binance: 'XRPUSDT',  bybit: 'XRPUSDT',  okx: 'XRP-USDT',  kraken: 'XRP/USDT',  bitstamp: 'xrpusd',  coinbase: 'XRP-USD',  'binance-perp': 'XRPUSDT',  'bybit-perp': 'XRPUSDT',  'okx-perp': 'XRP-USDT-SWAP'  },
@@ -67,7 +69,8 @@ interface RegistryEntry {
   binancePerp: string | null;
   bybitPerp: string | null;
   okxPerp: string | null;
-  candleSource: 'binance' | 'bybit' | null;
+  hyperliquid: string | null;
+  candleSource: 'binance' | 'bybit' | 'hyperliquid' | null;
 }
 
 const runtimeRegistry = new Map<string, RegistryEntry>();
@@ -77,18 +80,19 @@ const runtimeRegistry = new Map<string, RegistryEntry>();
 export function registerSymbol(
   canonical: string,
   venues: ResolvedVenues,
-  candleSource: 'binance' | 'bybit' | null,
+  candleSource: 'binance' | 'bybit' | 'hyperliquid' | null,
 ): void {
   runtimeRegistry.set(canonical, {
-    binance:     venues.binance,
-    bybit:       venues.bybit,
-    okx:         venues.okx,
-    kraken:      venues.kraken,
-    bitstamp:    venues.bitstamp,
-    coinbase:    venues.coinbase,
-    binancePerp: venues['binance-perp'],
-    bybitPerp:   venues['bybit-perp'],
-    okxPerp:     venues['okx-perp'],
+    binance:      venues.binance,
+    bybit:        venues.bybit,
+    okx:          venues.okx,
+    kraken:       venues.kraken,
+    bitstamp:     venues.bitstamp,
+    coinbase:     venues.coinbase,
+    binancePerp:  venues['binance-perp'],
+    bybitPerp:    venues['bybit-perp'],
+    okxPerp:      venues['okx-perp'],
+    hyperliquid:  venues.hyperliquid,
     candleSource,
   });
 }
@@ -101,7 +105,7 @@ export function getMapping(canonical: string): SymbolMapping | null {
   return SYMBOL_MAP[canonical] ?? null;
 }
 
-export function candleSourceFor(symbol: string): 'binance' | 'bybit' {
+export function candleSourceFor(symbol: string): 'binance' | 'bybit' | 'hyperliquid' {
   const entry = runtimeRegistry.get(symbol);
   if (entry?.candleSource) return entry.candleSource;
   const chain = CANDLE_FALLBACK[symbol] ?? CANDLE_FALLBACK.DEFAULT;
@@ -115,7 +119,7 @@ try {
     const parsed = JSON.parse(raw) as Record<string, {
       canonical?: string;
       venues?: ResolvedVenues;
-      candleSource?: 'binance' | 'bybit' | null;
+      candleSource?: 'binance' | 'bybit' | 'hyperliquid' | null;
       resolvedAt?: number;
     }>;
     const now = Date.now();

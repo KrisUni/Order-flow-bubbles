@@ -13,13 +13,14 @@ const STATUS_COLOR: Record<string, string> = {
   error: '#ef4444',
 };
 
-const EXCHANGES = ['candles', 'binance', 'binance-perp', 'coinbase', 'kraken', 'bybit', 'bybit-perp', 'okx', 'okx-perp', 'bitstamp'] as const;
+const EXCHANGES = ['candles', 'binance', 'binance-perp', 'coinbase', 'kraken', 'bybit', 'bybit-perp', 'okx', 'okx-perp', 'bitstamp', 'hyperliquid'] as const;
 
 const VENUE_LABELS: Record<string, string> = {
   binance: 'BN', bybit: 'BB', okx: 'OKX', kraken: 'KRK', bitstamp: 'BST',
   coinbase: 'CB', 'binance-perp': 'BNP', 'bybit-perp': 'BBP', 'okx-perp': 'OKP',
+  hyperliquid: 'HL',
 };
-const VENUE_ORDER = ['binance', 'bybit', 'okx', 'kraken', 'bitstamp', 'coinbase', 'binance-perp', 'bybit-perp', 'okx-perp'] as const;
+const VENUE_ORDER = ['binance', 'bybit', 'okx', 'kraken', 'bitstamp', 'coinbase', 'binance-perp', 'bybit-perp', 'okx-perp', 'hyperliquid'] as const;
 
 export default function Header() {
   const symbol = useStore((s) => s.symbol);
