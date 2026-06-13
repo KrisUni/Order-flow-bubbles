@@ -37,6 +37,7 @@ export default function SettingsPanel() {
   const removeAlertRule = useStore((s) => s.removeAlertRule);
   const closePanel = useStore((s) => s.closePanel);
 
+  const [draft, setDraft] = useState<string | null>(null);
   const [resetting, setResetting] = useState(false);
   const [notifPerm, setNotifPerm] = useState<NotificationPermission>(
     typeof Notification !== 'undefined' ? Notification.permission : 'denied',
@@ -77,7 +78,14 @@ export default function SettingsPanel() {
 
   if (!settingsPanelOpen) return null;
 
-  const usdActive = minUsdFilter > 0;
+  function commitDraft() {
+    if (draft === null) return;
+    const n = parseFloat(draft);
+    if (isFinite(n) && n > 0) setMinUsdFilter(n);
+    setDraft(null);
+  }
+
+  const usdActive = draft !== null || minUsdFilter > 0;
 
   return (
     <PanelShell>
@@ -131,9 +139,12 @@ export default function SettingsPanel() {
               type="number"
               min="0"
               step="1000"
-              value={minUsdFilter}
+              value={draft !== null ? draft : (minUsdFilter || '')}
               disabled={!usdActive}
-              onChange={(e) => setMinUsdFilter(Math.max(0, parseFloat(e.target.value) || 0))}
+              onFocus={() => setDraft(String(minUsdFilter || ''))}
+              onChange={(e) => setDraft(e.target.value)}
+              onBlur={commitDraft}
+              onKeyDown={(e) => { if (e.key === 'Enter') commitDraft(); }}
               className="min-usd-input"
               style={{ opacity: usdActive ? 1 : 0.4, width: 90 }}
               placeholder="50000"
@@ -146,7 +157,7 @@ export default function SettingsPanel() {
               type="radio"
               name="filter-mode"
               checked={!usdActive}
-              onChange={() => setMinUsdFilter(0)}
+              onChange={() => { setMinUsdFilter(0); setDraft(null); }}
             />
             <span>No filter (show all outliers)</span>
           </label>

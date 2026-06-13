@@ -87,6 +87,7 @@ const Chart = forwardRef<ChartHandle, ChartProps>(function Chart({ volRef }, ref
   const vwapSeriesRef = useRef<ISeriesApi<'Line'> | null>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const candlesForProfileRef = useRef<Candle[]>([]);
+  const pendingCandlesRef = useRef<Candle[] | null>(null);
   const dirtyRef = useRef(true);
 
   const bubbles = useStore((s) => s.bubbles);
@@ -498,6 +499,13 @@ const Chart = forwardRef<ChartHandle, ChartProps>(function Chart({ volRef }, ref
     });
     candleSeriesRef.current = candleSeries;
 
+    // Replay any candle payload that arrived before the series existed
+    if (pendingCandlesRef.current !== null) {
+      candleSeries.setData(pendingCandlesRef.current as CandlestickData[]);
+      candlesForProfileRef.current = [...pendingCandlesRef.current];
+      pendingCandlesRef.current = null;
+    }
+
     const vwapSeries = chart.addLineSeries({
       color: 'rgba(139,92,246,0.8)',
       lineWidth: 1,
@@ -584,10 +592,16 @@ const Chart = forwardRef<ChartHandle, ChartProps>(function Chart({ volRef }, ref
         else arr.push(c);
       },
       setCandles(cs: Candle[]) {
-        candleSeriesRef.current?.setData(cs as CandlestickData[]);
+        if (!candleSeriesRef.current) {
+          pendingCandlesRef.current = cs;
+          return;
+        }
+        candleSeriesRef.current.setData(cs as CandlestickData[]);
         candlesForProfileRef.current = [...cs];
+        pendingCandlesRef.current = null;
       },
       clearChart() {
+        pendingCandlesRef.current = null;
         candleSeriesRef.current?.setData([]);
         vwapSeriesRef.current?.setData([]);
         candlesForProfileRef.current = [];

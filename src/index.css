@@ -357,8 +357,27 @@ body {
 }
 
 .venue-chip--miss {
-  color: var(--text-dim);
+  color: #4b5563;
   background: transparent;
+  border-color: transparent;
+}
+
+.venue-chip--err {
+  border-color: rgba(239, 68, 68, 0.35);
+}
+
+.venue-chip-glyph {
+  font-size: 9px;
+  line-height: 1;
+}
+
+@keyframes venue-pulse {
+  0%, 100% { opacity: 0.4; }
+  50%       { opacity: 1;   }
+}
+
+.venue-chip--connecting .venue-chip-glyph {
+  animation: venue-pulse 1.4s ease-in-out infinite;
 }
 
 /* ── Side panels ── */
@@ -553,10 +572,23 @@ body {
   font-weight: 600;
 }
 
-.trade-exchange {
+.trade-exchange-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 1px 5px;
+  border-radius: 3px;
   font-size: 10px;
-  color: #a78bfa;
+  font-weight: 500;
   text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.trade-exchange-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
 }
 
 /* ── Legend ── */

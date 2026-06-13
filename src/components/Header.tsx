@@ -1,8 +1,9 @@
 import { useState, useEffect, useRef } from 'react';
 import { useStore } from '../lib/config';
 import { INTERVALS } from '../lib/constants';
-import { SYMBOL_MAP } from '../lib/exchanges/symbolMap';
+import { SYMBOL_MAP, getMapping } from '../lib/exchanges/symbolMap';
 import { resolveSymbol, type ResolvedSymbol } from '../lib/exchanges/resolver';
+import { EXCHANGE_COLORS, VENUE_LABELS } from '../lib/exchangeColors';
 
 const STATIC_SYMBOLS = Object.keys(SYMBOL_MAP);
 
@@ -15,12 +16,14 @@ const STATUS_COLOR: Record<string, string> = {
 
 const EXCHANGES = ['candles', 'binance', 'binance-perp', 'coinbase', 'kraken', 'bybit', 'bybit-perp', 'okx', 'okx-perp', 'bitstamp', 'hyperliquid'] as const;
 
-const VENUE_LABELS: Record<string, string> = {
-  binance: 'BN', bybit: 'BB', okx: 'OKX', kraken: 'KRK', bitstamp: 'BST',
-  coinbase: 'CB', 'binance-perp': 'BNP', 'bybit-perp': 'BBP', 'okx-perp': 'OKP',
-  hyperliquid: 'HL',
-};
 const VENUE_ORDER = ['binance', 'bybit', 'okx', 'kraken', 'bitstamp', 'coinbase', 'binance-perp', 'bybit-perp', 'okx-perp', 'hyperliquid'] as const;
+
+// Map hyphenated venue key → SymbolMapping camelCase key for getMapping() lookup
+const VENUE_TO_MAPPING_KEY: Record<string, string> = {
+  'binance-perp': 'binancePerp',
+  'bybit-perp': 'bybitPerp',
+  'okx-perp': 'okxPerp',
+};
 
 export default function Header() {
   const symbol = useStore((s) => s.symbol);
@@ -41,22 +44,13 @@ export default function Header() {
   const [resolveError, setResolveError] = useState<string | null>(null);
   const [resolvedResult, setResolvedResult] = useState<ResolvedSymbol | null>(null);
   const [chipsVisible, setChipsVisible] = useState(false);
-  const chipsTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Sync input when symbol changes externally (session restore, etc.)
   useEffect(() => { setInputVal(symbol); }, [symbol]);
 
-  function clearChipsTimer() {
-    if (chipsTimerRef.current !== null) {
-      clearTimeout(chipsTimerRef.current);
-      chipsTimerRef.current = null;
-    }
-  }
-
   async function handleResolve() {
     const raw = inputVal.trim();
     if (!raw) return;
-    clearChipsTimer();
     setResolving(true);
     setResolveError(null);
     setChipsVisible(false);
@@ -69,14 +63,9 @@ export default function Header() {
         return;
       }
       setResolvedResult(result);
-      setChipsVisible(true);
       addRecentSymbol(result.canonical);
       setSymbol(result.canonical);
       setInputVal(result.canonical);
-      chipsTimerRef.current = setTimeout(() => {
-        setChipsVisible(false);
-        chipsTimerRef.current = null;
-      }, 6000);
     } catch {
       setResolveError(`Could not resolve "${raw.toUpperCase()}"`);
       setChipsVisible(true);
@@ -91,6 +80,15 @@ export default function Header() {
       setResolveError(null);
       setChipsVisible(false);
     }
+  }
+
+  // Venue mapping helper: resolve-chips row reads live mapping so it stays accurate
+  // even when resolvedResult is stale (symbol was restored from persistence before resolve ran).
+  const currentMapping = getMapping(symbol);
+  function isMapped(v: string): boolean {
+    if (resolvedResult) return resolvedResult.venues[v as keyof typeof resolvedResult.venues] != null;
+    const mk = (VENUE_TO_MAPPING_KEY[v] ?? v) as keyof typeof currentMapping;
+    return currentMapping != null && currentMapping[mk] != null;
   }
 
   // Datalist options: recent first, then static (deduped)
@@ -214,21 +212,50 @@ export default function Header() {
         </div>
       </header>
 
-      {chipsVisible && resolvedResult && (
-        <div className={`resolve-chips-row${resolveError ? ' resolve-chips-row--error' : ''}`}>
-          {resolveError && <span className="resolve-error-msg">{resolveError}</span>}
-          {VENUE_ORDER.map((v) => {
-            const active = resolvedResult.venues[v] != null;
-            return (
-              <span
-                key={v}
-                className={`venue-chip${active ? ' venue-chip--ok' : ' venue-chip--miss'}`}
-                title={resolvedResult.venues[v] ?? 'not found'}
-              >
-                {VENUE_LABELS[v]} {active ? '✓' : '✗'}
-              </span>
-            );
-          })}
+      {/* Always-visible venue status chips — live mapping + connection state */}
+      <div className="resolve-chips-row">
+        {VENUE_ORDER.map((v) => {
+          const mapped = isMapped(v);
+          const st = exchangeStatuses[v] ?? 'disconnected';
+          const color = EXCHANGE_COLORS[v] ?? '#6b7280';
+          let glyph: string;
+          let glyphColor: string;
+          let chipClass = 'venue-chip';
+          if (!mapped) {
+            glyph = '–';
+            glyphColor = '#4b5563';
+            chipClass += ' venue-chip--miss';
+          } else if (st === 'connected') {
+            glyph = '●';
+            glyphColor = color;
+            chipClass += ' venue-chip--ok';
+          } else if (st === 'error') {
+            glyph = '✗';
+            glyphColor = '#ef4444';
+            chipClass += ' venue-chip--err';
+          } else {
+            glyph = '◐';
+            glyphColor = color;
+            chipClass += ' venue-chip--connecting';
+          }
+          return (
+            <span
+              key={v}
+              className={chipClass}
+              title={`${v} — ${mapped ? st : 'not listed'}`}
+              style={{ borderColor: mapped ? `${color}40` : undefined }}
+            >
+              <span className="venue-chip-glyph" style={{ color: glyphColor }}>{glyph}</span>
+              {' '}{VENUE_LABELS[v]}
+            </span>
+          );
+        })}
+      </div>
+
+      {/* Transient resolve error (error chips only) */}
+      {chipsVisible && resolveError && (
+        <div className="resolve-chips-row resolve-chips-row--error">
+          <span className="resolve-error-msg">{resolveError}</span>
         </div>
       )}
 

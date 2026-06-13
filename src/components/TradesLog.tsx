@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import type { ChartHandle } from './Chart';
 import { useStore } from '../lib/config';
 import PanelShell from './PanelShell';
+import { EXCHANGE_COLORS, VENUE_LABELS, hexToRgba } from '../lib/exchangeColors';
 
 interface Props {
   chartRef: React.RefObject<ChartHandle | null>;
@@ -101,8 +102,20 @@ export default function TradesLog({ chartRef }: Props) {
                   {t.pattern}
                 </span>
               )}
-              {t.exchange && t.exchange !== 'binance' && (
-                <span className="trade-exchange">{t.exchange}</span>
+              {t.exchange && (
+                <span
+                  className="trade-exchange-badge"
+                  style={{
+                    color: EXCHANGE_COLORS[t.exchange] ?? '#9ca3af',
+                    background: hexToRgba(EXCHANGE_COLORS[t.exchange] ?? '#9ca3af', 0.12),
+                  }}
+                >
+                  <span
+                    className="trade-exchange-dot"
+                    style={{ background: EXCHANGE_COLORS[t.exchange] ?? '#9ca3af' }}
+                  />
+                  {VENUE_LABELS[t.exchange] ?? t.exchange}
+                </span>
               )}
             </div>
           </div>
